@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,7 +41,7 @@ class ScrollLearnApp extends StatelessWidget {
         fontFamily: 'Inter',
       ),
       themeMode: ThemeMode.system,
-      home: const SplashScreen(),
+      home: const OnboardingScreen(),
     );
   }
 }

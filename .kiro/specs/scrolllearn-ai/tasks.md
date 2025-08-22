@@ -54,7 +54,13 @@
   - Write bloc tests for all state management components
   - _Requirements: 1.2, 2.6, 3.6, 4.4, 5.1_
 
-- [ ] 7. Convert HTML onboarding screen to Flutter
+- [x] 7. Convert HTML onboarding screen to Flutter
+
+
+
+
+
+
   - Analyze provided HTML design for onboarding screen
   - Create OnboardingScreen widget matching the design layout
   - Implement background image display with proper scaling
@@ -63,7 +69,13 @@
   - Ensure responsive design for different screen sizes
   - _Requirements: 1.1, 1.4_
 
-- [ ] 8. Convert HTML subject selection screen to Flutter
+- [x] 8. Convert HTML subject selection screen to Flutter
+
+
+
+
+
+
   - Analyze provided HTML checkbox-based subject selection design
   - Create SubjectSelectionScreen widget with back arrow and "Subjects" title
   - Implement checkbox list for Math, Science, History, Geography
@@ -72,11 +84,17 @@
   - Ensure proper checkbox styling and state management
   - _Requirements: 1.1, 1.2, 5.4_
 
-- [ ] 9. Convert HTML API keys screen to Flutter
+- [x] 9. Convert HTML API keys screen to Flutter
+
+
+
+
+
   - Analyze provided HTML API keys configuration design
   - Create APIKeysScreen widget with back arrow and "API Keys" title
   - Implement input fields for OpenAI, Gemini, and Anthropic API keys
   - Add "Skip" and "Save & Continue" buttons with proper styling
+  - 
   - Implement secure storage for API keys when saved
   - Add input validation and error handling
   - _Requirements: 4.1, 4.2, 8.1_
