@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scrolllearn_ai/screens/api_keys_screen.dart';
+import 'package:scrolllearn_ai/screens/gesture_tutorial_screen.dart';
 import 'package:scrolllearn_ai/repositories/secure_storage_repository.dart';
 
 void main() {
@@ -44,12 +45,22 @@ void main() {
         'sk-ant-test-anthropic-key-1234567890123456789',
       );
 
+      // Scroll to make the save button visible
+      await tester.ensureVisible(find.text('Save & Continue'));
+
       // Tap Save & Continue
       await tester.tap(find.text('Save & Continue'));
       await tester.pumpAndSettle();
 
-      // Verify success message appears
+      // Verify success message appears and navigation to gesture tutorial
       expect(find.text('API keys saved successfully!'), findsOneWidget);
+      
+      // Wait a bit more for navigation to complete
+      await tester.pumpAndSettle();
+      
+      // Verify we're now on the gesture tutorial screen
+      expect(find.text('Welcome to ScrollLearn AI'), findsOneWidget);
+      expect(find.byType(GestureTutorialScreen), findsOneWidget);
     });
 
     testWidgets('should show validation errors for invalid API keys', (WidgetTester tester) async {
@@ -84,12 +95,16 @@ void main() {
 
       await tester.pumpAndSettle();
 
+      // Scroll to make the skip button visible
+      await tester.ensureVisible(find.text('Skip for now'));
+
       // Tap Skip
       await tester.tap(find.text('Skip for now'));
       await tester.pumpAndSettle();
 
-      // Verify skip message appears
-      expect(find.textContaining('API configuration skipped'), findsOneWidget);
+      // Verify navigation to gesture tutorial screen
+      expect(find.text('Welcome to ScrollLearn AI'), findsOneWidget);
+      expect(find.byType(GestureTutorialScreen), findsOneWidget);
     });
 
     testWidgets('should toggle password visibility', (WidgetTester tester) async {

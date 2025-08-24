@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../repositories/secure_storage_repository.dart';
 import '../utils/app_colors.dart';
+import 'gesture_tutorial_screen.dart';
 
 class APIKeysScreen extends StatefulWidget {
   const APIKeysScreen({super.key});
@@ -112,15 +113,10 @@ class _APIKeysScreenState extends State<APIKeysScreen>
   Future<void> _skipConfiguration() async {
     HapticFeedback.lightImpact();
     
-    // TODO: Navigate to next screen (tutorial or main app)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('API configuration skipped. You can set this up later in settings.'),
-        backgroundColor: AppColors.info,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+    // Navigate to gesture tutorial screen
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const GestureTutorialScreen(),
       ),
     );
   }
@@ -162,8 +158,12 @@ class _APIKeysScreenState extends State<APIKeysScreen>
           ),
         );
         
-        // TODO: Navigate to next screen (tutorial or main app)
-        // For now, just show success message
+        // Navigate to gesture tutorial screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const GestureTutorialScreen(),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {

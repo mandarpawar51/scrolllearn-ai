@@ -118,15 +118,26 @@
   - _Requirements: 1.3, 8.4, 8.5_
 
 - [ ] 10. Create gesture tutorial screen
-  - Build interactive tutorial showing each gesture direction
-  - Add animated demonstrations of swipe gestures
-  - Display subject mappings for each gesture direction
-  - Implement practice mode where users can try gestures
-  - Create completion tracking and navigation to main screen
-  - Write widget tests for tutorial interactions
-  - _Requirements: 1.5, 2.6_
 
-- [ ] 11. Build main home screen with gesture detection
+
+  - Build interactive tutorial showing each gesture direction with sample questions
+  - Add animated demonstrations of swipe gestures for each subject
+  - Display subject mappings for each gesture direction (down=Math, up=Science, right=History, left=Geography)
+  - Implement practice mode where users can try gestures and see sample questions
+  - Show pre-defined sample questions when users practice each gesture (3-5 seconds display time)
+  - Create completion tracking requiring all four gesture directions to be practiced
+  - Add smooth transitions and visual feedback for gesture recognition
+  - Integrate question display seamlessly with existing gesture detection
+  - Write widget tests for tutorial interactions and question display
+  - _Requirements: 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8_
+
+- [x] 11. Build main home screen with gesture detection
+
+
+
+
+
+
   - Create HomeScreen widget with full-screen gesture detection
   - Implement GestureDetector with pan update and end handlers
   - Add visual feedback during gesture recognition

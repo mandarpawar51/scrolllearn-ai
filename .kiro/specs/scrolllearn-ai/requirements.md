@@ -2,7 +2,7 @@
 
 ## Introduction
 
-ScrollLearn AI is a cross-platform Flutter mobile application that transforms learning into an interactive and engaging experience through gesture-based navigation and AI-powered study problems. The app allows users to access personalized educational content across multiple subjects (Math, Science, History, Geography) using intuitive swipe gestures, with AI-generated questions powered by configurable API providers like OpenAI, Gemini, and Claude.
+ScrollLearn AI is a cross-platform Flutter mobile application that transforms learning into an interactive and engaging experience through gesture-based navigation and AI-powered study problems. The app allows users to access personalized educational content across multiple subjects (Math, Science, History, Geography) using intuitive swipe gestures, with AI-generated questions powered by configurable API providers like OpenAI, Gemini, and Claude through the open router api .
 
 ## Requirements
 
@@ -17,8 +17,24 @@ ScrollLearn AI is a cross-platform Flutter mobile application that transforms le
 3. WHEN a user completes subject selection THEN the system SHALL offer optional Google/Apple login
 4. WHEN a user skips authentication THEN the system SHALL proceed to the gesture tutorial
 5. WHEN a user completes onboarding THEN the system SHALL display a gesture tutorial showing swipe directions for each subject
+6. WHEN a user practices gestures in the tutorial THEN the system SHALL present subject-specific sample questions to demonstrate the learning experience
 
-### Requirement 2: Gesture-Based Navigation System
+### Requirement 2: Interactive Tutorial with Subject Questions
+
+**User Story:** As a new user learning the gesture system, I want to see sample questions for each subject when I practice the gestures in the gesture tutorial screen, so that I understand what type of content I'll get for each swipe direction.
+
+#### Acceptance Criteria
+
+1. WHEN a user performs a downward swipe in the gesture tutorial screen practice mode THEN the system SHALL display a sample Math question (e.g., algebra, geometry, or arithmetic problem)
+2. WHEN a user performs an upward swipe in the gesture tutorial screen practice mode THEN the system SHALL display a sample Science question (e.g., physics, chemistry, or biology concept)
+3. WHEN a user performs a right swipe in the gesture tutorial screen practice mode THEN the system SHALL display a sample History question (e.g., historical events, dates, or figures)
+4. WHEN a user performs a left swipe in the gesture tutorial screen practice mode THEN the system SHALL display a sample Geography question (e.g., countries, capitals, or landmarks)
+5. WHEN a sample question is displayed in the gesture tutorial screen THEN the system SHALL show it for 3-5 seconds before allowing the next gesture
+6. WHEN a user completes practice for all gesture directions in the gesture tutorial screen THEN the system SHALL mark the tutorial as complete
+7. WHEN sample questions are shown in the gesture tutorial screen THEN the system SHALL use pre-defined questions that don't require API calls
+8. WHEN the gesture tutorial screen is in practice mode THEN the system SHALL integrate question display seamlessly with the existing gesture detection and progress tracking
+
+### Requirement 3: Gesture-Based Navigation System
 
 **User Story:** As a student, I want to navigate between different subjects using intuitive gestures, so that I can quickly access the type of problems I want to practice.
 
@@ -31,7 +47,7 @@ ScrollLearn AI is a cross-platform Flutter mobile application that transforms le
 5. WHEN a user performs a gesture for a subject not selected during onboarding THEN the system SHALL display a message indicating the subject is not enabled
 6. WHEN gesture recognition occurs THEN the system SHALL provide visual feedback within 200ms
 
-### Requirement 3: AI-Powered Problem Generation
+### Requirement 4: AI-Powered Problem Generation
 
 **User Story:** As a learner, I want to receive AI-generated study problems with solutions, so that I can practice and learn new concepts across different subjects.
 
@@ -44,7 +60,7 @@ ScrollLearn AI is a cross-platform Flutter mobile application that transforms le
 5. WHEN an API call fails THEN the system SHALL display an appropriate error message and retry option
 6. WHEN no API key is configured THEN the system SHALL prompt the user to add API credentials
 
-### Requirement 4: API Management and Configuration
+### Requirement 5: API Management and Configuration
 
 **User Story:** As a user, I want to configure my own AI API keys and select different providers, so that I can control my AI usage and access advanced models.
 
@@ -56,7 +72,7 @@ ScrollLearn AI is a cross-platform Flutter mobile application that transforms le
 4. WHEN multiple API keys are configured THEN the system SHALL allow users to switch between providers
 5. IF no API key is provided THEN the system SHALL use a default free tier or demo mode with limited functionality
 
-### Requirement 5: Settings and Customization
+### Requirement 6: Settings and Customization
 
 **User Story:** As a user, I want to customize my app experience through settings, so that I can adjust the difficulty, theme, and other preferences to match my learning needs.
 
@@ -68,7 +84,7 @@ ScrollLearn AI is a cross-platform Flutter mobile application that transforms le
 4. WHEN a user modifies subject preferences THEN the system SHALL update which subjects are available via gestures
 5. WHEN settings are changed THEN the system SHALL persist the changes locally
 
-### Requirement 6: Problem Interaction and Solution Display
+### Requirement 7: Problem Interaction and Solution Display
 
 **User Story:** As a student, I want to attempt problems and see detailed solutions, so that I can learn from both correct and incorrect answers.
 
@@ -81,7 +97,7 @@ ScrollLearn AI is a cross-platform Flutter mobile application that transforms le
 5. WHEN the solution is revealed THEN the system SHALL show the correct answer with a detailed explanation
 6. WHEN viewing a solution THEN the system SHALL provide an option to generate a new problem
 
-### Requirement 7: Cross-Platform Performance
+### Requirement 8: Cross-Platform Performance
 
 **User Story:** As a mobile user, I want the app to work smoothly on both Android and iOS devices, so that I can have a consistent learning experience regardless of my device.
 
@@ -93,7 +109,7 @@ ScrollLearn AI is a cross-platform Flutter mobile application that transforms le
 4. WHEN API calls are made THEN the system SHALL handle network connectivity issues gracefully
 5. WHEN the app is backgrounded and resumed THEN the system SHALL maintain the current state
 
-### Requirement 8: Data Privacy and Storage
+### Requirement 9: Data Privacy and Storage
 
 **User Story:** As a privacy-conscious user, I want my data to be handled securely and only stored with my consent, so that I can trust the app with my learning information.
 

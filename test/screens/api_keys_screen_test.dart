@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scrolllearn_ai/screens/api_keys_screen.dart';
+import 'package:scrolllearn_ai/screens/gesture_tutorial_screen.dart';
 
 void main() {
   group('APIKeysScreen', () {
@@ -84,6 +85,55 @@ void main() {
       // Verify we're back to the original screen
       expect(find.text('Go to API Keys'), findsOneWidget);
       expect(find.text('API Keys'), findsNothing);
+    });
+
+    testWidgets('should navigate to gesture tutorial when skip is pressed', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: APIKeysScreen(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify we're on the API keys screen
+      expect(find.text('API Keys'), findsOneWidget);
+
+      // Scroll to make the skip button visible
+      await tester.ensureVisible(find.text('Skip for now'));
+
+      // Tap the skip button
+      await tester.tap(find.text('Skip for now'));
+      await tester.pumpAndSettle();
+
+      // Verify we're now on the gesture tutorial screen
+      expect(find.text('Welcome to ScrollLearn AI'), findsOneWidget);
+      expect(find.byType(GestureTutorialScreen), findsOneWidget);
+    });
+
+    testWidgets('should navigate to gesture tutorial after saving valid API keys', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: APIKeysScreen(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Enter a valid OpenAI API key
+      final openaiField = find.byType(TextFormField).first;
+      await tester.enterText(openaiField, 'sk-test1234567890abcdefghijklmnopqrstuvwxyz');
+
+      // Scroll to make the save button visible
+      await tester.ensureVisible(find.text('Save & Continue'));
+
+      // Tap save and continue
+      await tester.tap(find.text('Save & Continue'));
+      await tester.pumpAndSettle();
+
+      // Verify we're now on the gesture tutorial screen
+      expect(find.text('Welcome to ScrollLearn AI'), findsOneWidget);
+      expect(find.byType(GestureTutorialScreen), findsOneWidget);
     });
   });
 }

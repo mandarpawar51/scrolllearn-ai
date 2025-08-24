@@ -36,11 +36,3 @@ class AppConstants {
   static const String openRouterChatEndpoint = '/chat/completions';
 }
 
-// Color Constants
-class AppColors {
-  static const int primaryBlue = 0xFF1979E6;
-  static const int textPrimary = 0xFF111418;
-  static const int textSecondary = 0xFF637588;
-  static const int backgroundLight = 0xFFFFFFFF;
-  static const int backgroundDark = 0xFF1A1A1A;
-}
