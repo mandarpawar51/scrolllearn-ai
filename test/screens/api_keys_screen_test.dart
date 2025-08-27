@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scrolllearn_ai/screens/api_keys_screen.dart';
-import 'package:scrolllearn_ai/screens/gesture_tutorial_screen.dart';
+import 'package:scrolllearn_ai/screens/home_screen.dart';
 
 void main() {
   group('APIKeysScreen', () {
@@ -87,7 +87,7 @@ void main() {
       expect(find.text('API Keys'), findsNothing);
     });
 
-    testWidgets('should navigate to gesture tutorial when skip is pressed', (WidgetTester tester) async {
+    testWidgets('should navigate to home screen when skip is pressed', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: APIKeysScreen(),
@@ -106,12 +106,11 @@ void main() {
       await tester.tap(find.text('Skip for now'));
       await tester.pumpAndSettle();
 
-      // Verify we're now on the gesture tutorial screen
-      expect(find.text('Welcome to ScrollLearn AI'), findsOneWidget);
-      expect(find.byType(GestureTutorialScreen), findsOneWidget);
+      // Verify we're now on the home screen
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
-    testWidgets('should navigate to gesture tutorial after saving valid API keys', (WidgetTester tester) async {
+    testWidgets('should navigate to home screen after saving valid API keys', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: APIKeysScreen(),
@@ -131,9 +130,8 @@ void main() {
       await tester.tap(find.text('Save & Continue'));
       await tester.pumpAndSettle();
 
-      // Verify we're now on the gesture tutorial screen
-      expect(find.text('Welcome to ScrollLearn AI'), findsOneWidget);
-      expect(find.byType(GestureTutorialScreen), findsOneWidget);
+      // Verify we're now on the home screen
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
   });
 }

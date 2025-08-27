@@ -1,297 +1,349 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'dart:math' as math;
 import '../blocs/gesture_bloc.dart';
-import '../models/gesture_models.dart';
 import '../models/subject_type.dart';
 import '../utils/app_colors.dart';
-import '../utils/constants.dart';
+import 'settings_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  int _currentTabIndex = 0;
+  final TextEditingController _answerController = TextEditingController();
+  SubjectType _currentSubject = SubjectType.math;
+  String _currentQuestion = "Solve for x: 2x + 5 = 15";
+  bool _showSolution = false;
+  
+  // Tutorial animation controllers
+  late AnimationController _tutorialController;
+  late AnimationController _fingerController;
+  late Animation<Offset> _fingerAnimation;
+  late Animation<double> _fadeAnimation;
+  bool _showTutorial = true;
+  bool _hasUserSwiped = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeTutorialAnimations();
+    _startTutorial();
+  }
+
+  @override
+  void dispose() {
+    _answerController.dispose();
+    _tutorialController.dispose();
+    _fingerController.dispose();
+    super.dispose();
+  }
+
+  void _initializeTutorialAnimations() {
+    _tutorialController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+    
+    _fingerController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    
+    _fingerAnimation = Tween<Offset>(
+      begin: const Offset(0.5, 0.5),
+      end: const Offset(0.1, 0.5),
+    ).animate(CurvedAnimation(
+      parent: _fingerController,
+      curve: Curves.easeInOut,
+    ));
+    
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _tutorialController,
+      curve: const Interval(0.0, 0.3),
+    ));
+  }
+
+  void _startTutorial() {
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted && _showTutorial) {
+        _tutorialController.forward();
+        _repeatFingerAnimation();
+      }
+    });
+  }
+
+  void _repeatFingerAnimation() {
+    _fingerController.forward().then((_) {
+      if (mounted && _showTutorial && !_hasUserSwiped) {
+        _fingerController.reset();
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && _showTutorial && !_hasUserSwiped) {
+            _repeatFingerAnimation();
+          }
+        });
+      }
+    });
+  }
+
+  void _hideTutorial() {
+    if (_showTutorial) {
+      setState(() {
+        _showTutorial = false;
+        _hasUserSwiped = true;
+      });
+      _tutorialController.reverse();
+      _fingerController.stop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => GestureBloc(),
-      child: const _HomeScreenContent(),
-    );
-  }
-}
-
-class _HomeScreenContent extends StatelessWidget {
-  const _HomeScreenContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      body: SafeArea(
-        child: BlocListener<GestureBloc, GestureBlocState>(
-          listener: (context, state) {
-            if (state is GestureRecognized) {
-              _navigateToProblemScreen(context, state.result.subject);
-            } else if (state is GestureInvalid) {
-              _showGestureError(context, state.reason);
-            }
-          },
-          child: BlocBuilder<GestureBloc, GestureBlocState>(
-            builder: (context, state) {
-              return GestureDetector(
-                onPanStart: (details) {
-                  context.read<GestureBloc>().add(
-                    GesturePanStart(details.localPosition),
-                  );
-                },
-                onPanUpdate: (details) {
-                  context.read<GestureBloc>().add(
-                    GesturePanUpdate(details.localPosition, details.delta),
-                  );
-                },
-                onPanEnd: (details) {
-                  context.read<GestureBloc>().add(
-                    GesturePanEnd(details.velocity.pixelsPerSecond),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: AppColors.backgroundGradient,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      // Main content
-                      _buildMainContent(context, state),
-                      
-                      // Gesture feedback overlay
-                      if (state is GestureDetecting)
-                        _buildGestureOverlay(context, state.gestureData),
-                      
-                      // Recognition feedback
-                      if (state is GestureRecognized)
-                        _buildRecognitionFeedback(context, state.result),
-                    ],
-                  ),
-                ),
-              );
-            },
+      child: WillPopScope(
+        onWillPop: () async {
+          // Prevent back navigation from home screen
+          return false;
+        },
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: BlocListener<GestureBloc, GestureBlocState>(
+              listener: (context, state) {
+                if (state is GestureRecognized) {
+                  _switchSubject(state.result.subject);
+                }
+              },
+              child: _buildContent(),
+            ),
           ),
+          bottomNavigationBar: _buildBottomNavigation(),
         ),
       ),
     );
   }
 
-  Widget _buildMainContent(BuildContext context, GestureBlocState state) {
-    return Column(
-      children: [
-        // Header
-        _buildHeader(context),
-        
-        // Main gesture area
-        Expanded(
-          child: _buildGestureArea(context, state),
-        ),
-        
-        // Bottom instructions
-        _buildInstructions(context),
-      ],
+  Widget _buildContent() {
+    return BlocBuilder<GestureBloc, GestureBlocState>(
+      builder: (context, state) {
+        return GestureDetector(
+          onPanStart: (details) {
+            _hideTutorial();
+            context.read<GestureBloc>().add(
+              GesturePanStart(details.localPosition),
+            );
+          },
+          onPanUpdate: (details) {
+            context.read<GestureBloc>().add(
+              GesturePanUpdate(details.localPosition, details.delta),
+            );
+          },
+          onPanEnd: (details) {
+            context.read<GestureBloc>().add(
+              GesturePanEnd(details.velocity.pixelsPerSecond),
+            );
+          },
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: _buildProblemContent(),
+                  ),
+                ],
+              ),
+              // Tutorial overlay
+              if (_showTutorial) _buildTutorialOverlay(),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 20, 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            AppConstants.appName,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+            _currentSubject.displayName,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
             ),
           ),
           IconButton(
-            onPressed: () => _navigateToSettings(context),
+            onPressed: () => _showSubjectMenu(),
             icon: const Icon(
-              Icons.settings,
-              color: AppColors.textSecondary,
+              Icons.menu,
+              color: Color(0xFF666666),
+              size: 24,
             ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGestureArea(BuildContext context, GestureBlocState state) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Central icon/logo
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.school,
-              size: 60,
-              color: AppColors.primaryBlue,
-            ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Status text
-          _buildStatusText(context, state),
-          
-          const SizedBox(height: 24),
-          
-          // Subject hints
-          _buildSubjectHints(context, state),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusText(BuildContext context, GestureBlocState state) {
-    String text;
-    Color color;
-    
-    if (state is GestureDetecting) {
-      if (state.gestureData.detectedDirection != null) {
-        text = 'Detected: ${state.gestureData.detectedDirection!.subject.displayName}';
-        color = state.gestureData.detectedDirection!.subject.color;
-      } else {
-        text = 'Keep swiping...';
-        color = AppColors.textSecondary;
-      }
-    } else if (state is GestureRecognized) {
-      text = 'Opening ${state.result.subject.displayName}...';
-      color = state.result.subject.color;
-    } else if (state is GestureInvalid) {
-      text = state.reason;
-      color = AppColors.error;
-    } else {
-      text = 'Swipe to start learning';
-      color = AppColors.textPrimary;
-    }
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
-      child: Text(
-        text,
-        key: ValueKey(text),
-        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildSubjectHints(BuildContext context, GestureBlocState state) {
-    return Column(
-      children: [
-        // Top - Science
-        _buildSubjectHint(
-          context,
-          SubjectType.science,
-          GestureDirection.up,
-          Alignment.topCenter,
-          isActive: state is GestureDetecting && 
-                   state.gestureData.detectedDirection == GestureDirection.up,
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Middle row - Geography and History
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  Widget _buildProblemContent() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSubjectHint(
-              context,
-              SubjectType.geography,
-              GestureDirection.left,
-              Alignment.centerLeft,
-              isActive: state is GestureDetecting && 
-                       state.gestureData.detectedDirection == GestureDirection.left,
+            // Problem illustration/diagram area
+            _buildProblemIllustration(),
+            
+            const SizedBox(height: 32),
+            
+            // Question text
+            Text(
+              _currentQuestion,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
             ),
-            const SizedBox(width: 120), // Space for center icon
-            _buildSubjectHint(
-              context,
-              SubjectType.history,
-              GestureDirection.right,
-              Alignment.centerRight,
-              isActive: state is GestureDetecting && 
-                       state.gestureData.detectedDirection == GestureDirection.right,
+            
+            const SizedBox(height: 12),
+            
+            const Text(
+              'Enter your answer below:',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF888888),
+              ),
             ),
+            
+            const SizedBox(height: 24),
+            
+            // Answer input field
+            _buildAnswerInput(),
+            
+            const SizedBox(height: 24),
+            
+            // Show solution button
+            _buildShowSolutionButton(),
+            
+            // Solution display
+            if (_showSolution) _buildSolutionDisplay(),
+            
+            const Spacer(),
           ],
         ),
-        
-        const SizedBox(height: 16),
-        
-        // Bottom - Math
-        _buildSubjectHint(
-          context,
-          SubjectType.math,
-          GestureDirection.down,
-          Alignment.bottomCenter,
-          isActive: state is GestureDetecting && 
-                   state.gestureData.detectedDirection == GestureDirection.down,
+      ),
+    );
+  }
+
+  Widget _buildProblemIllustration() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: _currentSubject == SubjectType.math
+          ? _buildMathDiagram()
+          : _buildSubjectPlaceholder(),
+    );
+  }
+
+  Widget _buildMathDiagram() {
+    return Stack(
+      children: [
+        CustomPaint(
+          painter: MathDiagramPainter(),
+          size: const Size(double.infinity, 200),
+        ),
+        Positioned(
+          top: 16,
+          left: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Q₁: f(x) = cos(x)² - (sin²(x) + 1)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF374151),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                '= f = -1(x)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF374151),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 16,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFD1D5DB)),
+            ),
+            child: const Text(
+              'Q1',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildSubjectHint(
-    BuildContext context,
-    SubjectType subject,
-    GestureDirection direction,
-    Alignment alignment,
-    {bool isActive = false}
-  ) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive ? subject.color.withOpacity(0.2) : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isActive ? subject.color : AppColors.textLight,
-          width: isActive ? 2 : 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildSubjectPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            subject.icon,
-            size: 20,
-            color: isActive ? subject.color : AppColors.textSecondary,
+            _currentSubject.icon,
+            size: 48,
+            color: _currentSubject.color,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(height: 12),
           Text(
-            subject.displayName,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: isActive ? subject.color : AppColors.textSecondary,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            '${_currentSubject.displayName} Problem',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: _currentSubject.color,
             ),
           ),
         ],
@@ -299,202 +351,522 @@ class _HomeScreenContent extends StatelessWidget {
     );
   }
 
-  Widget _buildInstructions(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
+  Widget _buildAnswerInput() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: TextField(
+        controller: _answerController,
+        decoration: const InputDecoration(
+          hintText: 'Answer',
+          hintStyle: TextStyle(
+            color: Color(0xFFADB5BD),
+            fontSize: 16,
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF1A1A1A),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _showSolution = false;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildShowSolutionButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: ElevatedButton(
+        onPressed: _showSolutionAction,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF007AFF),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 0,
+          shadowColor: Colors.transparent,
+        ),
+        child: const Text(
+          'Show Solution',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSolutionDisplay() {
+    return Container(
+      margin: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.success.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.success.withOpacity(0.3),
+        ),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Swipe in any direction to access subjects',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppColors.textSecondary,
+          const Text(
+            'Solution:',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.success,
             ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildDirectionIndicator('↑ Science', AppColors.scienceColor),
-              const SizedBox(width: 16),
-              _buildDirectionIndicator('↓ Math', AppColors.mathColor),
-              const SizedBox(width: 16),
-              _buildDirectionIndicator('← Geography', AppColors.geographyColor),
-              const SizedBox(width: 16),
-              _buildDirectionIndicator('→ History', AppColors.historyColor),
-            ],
+          Text(
+            _getSolutionForCurrentProblem(),
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDirectionIndicator(String text, Color color) {
+
+
+  Widget _buildBottomNavigation() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
-      child: Text(
-        text,
-        style: TextStyle(
+      child: BottomNavigationBar(
+        currentIndex: _currentTabIndex,
+        onTap: (index) {
+          setState(() {
+            _currentTabIndex = index;
+          });
+          _handleBottomNavigation(index);
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF007AFF),
+        unselectedItemColor: const Color(0xFF888888),
+        elevation: 0,
+        selectedLabelStyle: const TextStyle(
           fontSize: 12,
-          color: color,
           fontWeight: FontWeight.w500,
         ),
-      ),
-    );
-  }
-
-  Widget _buildGestureOverlay(BuildContext context, GestureData gestureData) {
-    return Positioned.fill(
-      child: CustomPaint(
-        painter: GestureTrailPainter(gestureData),
-      ),
-    );
-  }
-
-  Widget _buildRecognitionFeedback(BuildContext context, GestureResult result) {
-    return Positioned.fill(
-      child: Container(
-        color: result.subject.color.withOpacity(0.1),
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  result.subject.icon,
-                  size: 48,
-                  color: result.subject.color,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  result.subject.displayName,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: result.subject.color,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Loading problem...',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
         ),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.trending_up_outlined),
+            activeIcon: Icon(Icons.trending_up),
+            label: 'Progress',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            activeIcon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }
 
-  void _navigateToProblemScreen(BuildContext context, SubjectType subject) {
-    // TODO: Navigate to problem screen
-    // For now, just show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening ${subject.displayName} problems...'),
-        backgroundColor: subject.color,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    
-    // Reset gesture state after navigation
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (context.mounted) {
-        context.read<GestureBloc>().add(const GestureReset());
-      }
+  // Action methods
+  void _switchSubject(SubjectType newSubject) {
+    setState(() {
+      _currentSubject = newSubject;
+      _currentQuestion = _getQuestionForSubject(newSubject);
+      _answerController.clear();
+      _showSolution = false;
     });
-  }
 
-  void _navigateToSettings(BuildContext context) {
-    // TODO: Navigate to settings screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Settings screen coming soon...'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
-
-  void _showGestureError(BuildContext context, String reason) {
+    // Show subject switch feedback
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(reason),
-        backgroundColor: AppColors.error,
+        content: Text('Switched to ${newSubject.displayName}'),
+        backgroundColor: newSubject.color,
         duration: const Duration(seconds: 1),
       ),
     );
   }
-}
 
-class GestureTrailPainter extends CustomPainter {
-  final GestureData gestureData;
-
-  GestureTrailPainter(this.gestureData);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (gestureData.distance < 20) return; // Don't draw for very small movements
-
-    final paint = Paint()
-      ..color = gestureData.detectedDirection?.subject.color.withOpacity(0.3) ?? 
-                AppColors.textLight.withOpacity(0.3)
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-
-    // Draw line from start to current position
-    canvas.drawLine(
-      gestureData.startPosition,
-      gestureData.currentPosition,
-      paint,
+  void _showSubjectMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Select Subject',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ...SubjectType.values.map((subject) => ListTile(
+              leading: Icon(subject.icon, color: subject.color),
+              title: Text(subject.displayName),
+              onTap: () {
+                Navigator.pop(context);
+                _switchSubject(subject);
+              },
+            )),
+          ],
+        ),
+      ),
     );
+  }
 
-    // Draw arrow head if direction is detected
-    if (gestureData.detectedDirection != null && gestureData.distance > 50) {
-      _drawArrowHead(canvas, paint);
+  void _showSolutionAction() {
+    setState(() {
+      _showSolution = true;
+    });
+  }
+
+  void _handleBottomNavigation(int index) {
+    switch (index) {
+      case 0:
+        // Home - already here
+        break;
+      case 1:
+        // Progress - coming soon
+        setState(() {
+          _currentTabIndex = 0; // Reset to home
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progress tracking coming soon!'),
+            backgroundColor: AppColors.primaryBlue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        break;
+      case 2:
+        // Settings
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SettingsScreen(),
+          ),
+        ).then((_) {
+          // Reset to home tab when returning from settings
+          setState(() {
+            _currentTabIndex = 0;
+          });
+        });
+        break;
     }
   }
 
-  void _drawArrowHead(Canvas canvas, Paint paint) {
-    final direction = gestureData.currentPosition - gestureData.startPosition;
-    final angle = math.atan2(direction.dy, direction.dx);
+  String _getQuestionForSubject(SubjectType subject) {
+    switch (subject) {
+      case SubjectType.math:
+        return 'Solve for x: 2x + 5 = 15';
+      case SubjectType.science:
+        return 'What is the chemical formula for water?';
+      case SubjectType.history:
+        return 'In which year did World War II end?';
+      case SubjectType.geography:
+        return 'What is the capital of Australia?';
+    }
+  }
+
+  String _getSolutionForCurrentProblem() {
+    switch (_currentSubject) {
+      case SubjectType.math:
+        return '2x + 5 = 15\\n2x = 15 - 5\\n2x = 10\\nx = 5';
+      case SubjectType.science:
+        return 'H₂O - Water consists of two hydrogen atoms and one oxygen atom.';
+      case SubjectType.history:
+        return '1945 - World War II ended on September 2, 1945.';
+      case SubjectType.geography:
+        return 'Canberra - The capital of Australia is Canberra, not Sydney or Melbourne.';
+    }
+  }
+
+  Widget _buildTutorialOverlay() {
+    return AnimatedBuilder(
+      animation: _tutorialController,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: Container(
+            color: Colors.black.withOpacity(0.7),
+            child: Stack(
+              children: [
+                // Tutorial text
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.3,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Swipe to Switch Subjects',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Swipe left or right to explore\\ndifferent subjects',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 32),
+                      // Subject indicators
+                      _buildSubjectIndicators(),
+                    ],
+                  ),
+                ),
+                // Animated finger
+                AnimatedBuilder(
+                  animation: _fingerAnimation,
+                  builder: (context, child) {
+                    return Positioned(
+                      left: MediaQuery.of(context).size.width * _fingerAnimation.value.dx,
+                      top: MediaQuery.of(context).size.height * _fingerAnimation.value.dy,
+                      child: _buildAnimatedFinger(),
+                    );
+                  },
+                ),
+                // Skip button
+                Positioned(
+                  top: 50,
+                  right: 20,
+                  child: TextButton(
+                    onPressed: _hideTutorial,
+                    child: const Text(
+                      'Skip',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAnimatedFinger() {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.touch_app,
+        color: Color(0xFF007AFF),
+        size: 30,
+      ),
+    );
+  }
+
+  Widget _buildSubjectIndicators() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: SubjectType.values.map((subject) {
+        final isActive = subject == _currentSubject;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isActive ? subject.color.withOpacity(0.8) : Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isActive ? subject.color : Colors.white.withOpacity(0.5),
+              width: 2,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                subject.icon,
+                color: isActive ? Colors.white : Colors.white70,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                subject.displayName,
+                style: TextStyle(
+                  color: isActive ? Colors.white : Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+}
+
+// Custom painter for math diagram
+class MathDiagramPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFD1D5DB)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    // Position the coordinate system in the right side
+    final center = Offset(size.width * 0.72, size.height * 0.6);
     
-    const arrowLength = 20.0;
-    const arrowAngle = math.pi / 6; // 30 degrees
-
-    final arrowPoint1 = Offset(
-      gestureData.currentPosition.dx - arrowLength * math.cos(angle - arrowAngle),
-      gestureData.currentPosition.dy - arrowLength * math.sin(angle - arrowAngle),
+    // Draw coordinate axes
+    canvas.drawLine(
+      Offset(center.dx - 40, center.dy),
+      Offset(center.dx + 40, center.dy),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(center.dx, center.dy - 40),
+      Offset(center.dx, center.dy + 40),
+      paint,
     );
 
-    final arrowPoint2 = Offset(
-      gestureData.currentPosition.dx - arrowLength * math.cos(angle + arrowAngle),
-      gestureData.currentPosition.dy - arrowLength * math.sin(angle + arrowAngle),
-    );
+    // Draw grid lines
+    paint.color = const Color(0xFFE5E7EB);
+    paint.strokeWidth = 0.5;
+    for (int i = -2; i <= 2; i++) {
+      if (i != 0) {
+        canvas.drawLine(
+          Offset(center.dx + i * 12, center.dy - 40),
+          Offset(center.dx + i * 12, center.dy + 40),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(center.dx - 40, center.dy + i * 12),
+          Offset(center.dx + 40, center.dy + i * 12),
+          paint,
+        );
+      }
+    }
 
-    canvas.drawLine(gestureData.currentPosition, arrowPoint1, paint);
-    canvas.drawLine(gestureData.currentPosition, arrowPoint2, paint);
+    // Draw axis labels
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
+    
+    // X-axis labels
+    textPainter.text = const TextSpan(
+      text: '2',
+      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 9),
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(center.dx + 24, center.dy + 4));
+    
+    // Y-axis labels  
+    textPainter.text = const TextSpan(
+      text: '2',
+      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 9),
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(center.dx + 4, center.dy - 24));
+
+    // Draw some additional mathematical elements
+    paint.color = const Color(0xFF6B7280);
+    paint.strokeWidth = 1.0;
+    
+    // Draw some tick marks
+    for (int i = -1; i <= 1; i++) {
+      if (i != 0) {
+        canvas.drawLine(
+          Offset(center.dx + i * 24, center.dy - 2),
+          Offset(center.dx + i * 24, center.dy + 2),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(center.dx - 2, center.dy + i * 24),
+          Offset(center.dx + 2, center.dy + i * 24),
+          paint,
+        );
+      }
+    }
+
+    // Draw arrows on axes
+    paint.strokeWidth = 1.5;
+    // X-axis arrow
+    canvas.drawLine(
+      Offset(center.dx + 40, center.dy),
+      Offset(center.dx + 35, center.dy - 3),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(center.dx + 40, center.dy),
+      Offset(center.dx + 35, center.dy + 3),
+      paint,
+    );
+    
+    // Y-axis arrow
+    canvas.drawLine(
+      Offset(center.dx, center.dy - 40),
+      Offset(center.dx - 3, center.dy - 35),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(center.dx, center.dy - 40),
+      Offset(center.dx + 3, center.dy - 35),
+      paint,
+    );
   }
 
   @override
-  bool shouldRepaint(GestureTrailPainter oldDelegate) {
-    return oldDelegate.gestureData != gestureData;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

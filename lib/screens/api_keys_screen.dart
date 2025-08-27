@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../repositories/secure_storage_repository.dart';
 import '../utils/app_colors.dart';
-import 'gesture_tutorial_screen.dart';
+import 'home_screen.dart';
 
 class APIKeysScreen extends StatefulWidget {
   const APIKeysScreen({super.key});
@@ -116,7 +116,7 @@ class _APIKeysScreenState extends State<APIKeysScreen>
     // Navigate to gesture tutorial screen
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => const GestureTutorialScreen(),
+        builder: (context) => const HomeScreen(),
       ),
     );
   }
@@ -161,7 +161,7 @@ class _APIKeysScreenState extends State<APIKeysScreen>
         // Navigate to gesture tutorial screen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => const GestureTutorialScreen(),
+            builder: (context) => const HomeScreen(),
           ),
         );
       }

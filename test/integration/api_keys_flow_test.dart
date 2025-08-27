@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scrolllearn_ai/screens/api_keys_screen.dart';
-import 'package:scrolllearn_ai/screens/gesture_tutorial_screen.dart';
+import 'package:scrolllearn_ai/screens/home_screen.dart';
 import 'package:scrolllearn_ai/repositories/secure_storage_repository.dart';
 
 void main() {
@@ -58,9 +58,8 @@ void main() {
       // Wait a bit more for navigation to complete
       await tester.pumpAndSettle();
       
-      // Verify we're now on the gesture tutorial screen
-      expect(find.text('Welcome to ScrollLearn AI'), findsOneWidget);
-      expect(find.byType(GestureTutorialScreen), findsOneWidget);
+      // Verify we're now on the home screen
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
     testWidgets('should show validation errors for invalid API keys', (WidgetTester tester) async {
@@ -102,9 +101,8 @@ void main() {
       await tester.tap(find.text('Skip for now'));
       await tester.pumpAndSettle();
 
-      // Verify navigation to gesture tutorial screen
-      expect(find.text('Welcome to ScrollLearn AI'), findsOneWidget);
-      expect(find.byType(GestureTutorialScreen), findsOneWidget);
+      // Verify navigation to home screen
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
     testWidgets('should toggle password visibility', (WidgetTester tester) async {
