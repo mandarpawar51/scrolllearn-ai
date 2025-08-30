@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../services/localization_service.dart';
 import '../repositories/secure_storage_repository.dart';
 import '../utils/app_colors.dart';
+import '../providers/theme_provider.dart';
+import '../providers/language_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,10 +23,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _anthropicController = TextEditingController();
   
   // Settings state
-  bool _darkMode = false;
   bool _appNotifications = true;
   bool _emailNotifications = false;
-  String _selectedLanguage = 'English';
   
   // API Keys visibility
   bool _obscureOpenAI = true;
@@ -47,10 +50,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     // Load user preferences from storage
     setState(() {
-      _darkMode = false;
       _appNotifications = true;
       _emailNotifications = false;
-      _selectedLanguage = 'English';
     });
   }
 
@@ -68,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _geminiController.text = geminiKey ?? '';
       _anthropicController.text = anthropicKey ?? '';
     } catch (e) {
-      _showErrorSnackBar('Failed to load API keys: $e');
+      _showErrorSnackBar(AppLocalizations.of(context)?.apiKeysLoadFailed(e.toString()) ?? 'Failed to load API keys: $e');
     } finally {
       setState(() {
         _isLoadingKeys = false;
@@ -92,9 +93,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await _secureStorage.setAnthropicKey(_anthropicController.text.trim());
       }
 
-      _showSuccessSnackBar('API keys saved successfully');
+      _showSuccessSnackBar(AppLocalizations.of(context)?.apiKeysSaved ?? 'API keys saved successfully');
     } catch (e) {
-      _showErrorSnackBar('Failed to save API keys: $e');
+      _showErrorSnackBar(AppLocalizations.of(context)?.apiKeysSaveFailed(e.toString()) ?? 'Failed to save API keys: $e');
     } finally {
       setState(() {
         _isLoadingKeys = false;
@@ -104,8 +105,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -115,7 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 20),
             _buildAccountSection(),
             const SizedBox(height: 32),
-            _buildPreferencesSection(),
+            _buildPreferencesSection(themeProvider, languageProvider),
             const SizedBox(height: 32),
             _buildApiKeysSection(),
             const SizedBox(height: 32),
@@ -131,21 +135,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final isRTL = Directionality.of(context) == TextDirection.rtl;
+    
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       elevation: 0,
       leading: IconButton(
         onPressed: () => Navigator.pop(context),
-        icon: const Icon(
-          Icons.arrow_back,
-          color: AppColors.textPrimary,
+        icon: Icon(
+          isRTL ? Icons.arrow_forward : Icons.arrow_back,
+          color: Theme.of(context).appBarTheme.foregroundColor,
           size: 24,
         ),
       ),
-      title: const Text(
-        'Settings',
+      title: Text(
+        AppLocalizations.of(context)?.settings ?? 'Settings',
         style: TextStyle(
-          color: AppColors.textPrimary,
+          color: Theme.of(context).appBarTheme.foregroundColor,
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
@@ -158,73 +164,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Account',
+        Text(
+          AppLocalizations.of(context)?.account ?? 'Account',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
         _buildSettingsItem(
           icon: Icons.person_outline,
-          title: 'Profile',
-          subtitle: 'Manage your profile',
+          title: AppLocalizations.of(context)?.profile ?? 'Profile',
+          subtitle: AppLocalizations.of(context)?.manageProfile ?? 'Manage your profile',
           onTap: () => _showComingSoon('Profile management'),
           showAvatar: true,
         ),
         _buildSettingsItem(
           icon: Icons.email_outlined,
-          title: 'Email',
-          subtitle: 'Change your email',
+          title: AppLocalizations.of(context)?.email ?? 'Email',
+          subtitle: AppLocalizations.of(context)?.changeEmail ?? 'Change your email',
           onTap: () => _showComingSoon('Email management'),
         ),
         _buildSettingsItem(
           icon: Icons.lock_outline,
-          title: 'Password',
-          subtitle: 'Change your password',
+          title: AppLocalizations.of(context)?.password ?? 'Password',
+          subtitle: AppLocalizations.of(context)?.changePassword ?? 'Change your password',
           onTap: () => _showComingSoon('Password management'),
         ),
       ],
     );
   }
 
-  Widget _buildPreferencesSection() {
+  Widget _buildPreferencesSection(ThemeProvider themeProvider, LanguageProvider languageProvider) {
+    final currentLanguage = LanguageProvider.supportedLanguages.firstWhere(
+      (lang) => lang['code'] == languageProvider.currentLocale.languageCode,
+      orElse: () => LanguageProvider.supportedLanguages.first,
+    );
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Preferences',
+        Text(
+          AppLocalizations.of(context)?.preferences ?? 'Preferences',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
         _buildSettingsItem(
           icon: Icons.language_outlined,
-          title: 'Language',
-          subtitle: 'Choose your preferred language',
-          onTap: () => _showLanguageSelector(),
-          trailing: const Icon(
-            Icons.chevron_right,
+          title: AppLocalizations.of(context)?.language ?? 'Language',
+          subtitle: AppLocalizations.of(context)?.currentLanguage('${currentLanguage['nativeName']} (${currentLanguage['name']})') ?? 'Current: ${currentLanguage['nativeName']} (${currentLanguage['name']})',
+          onTap: () => _showLanguageSelector(languageProvider),
+          trailing: Icon(
+            Directionality.of(context) == TextDirection.rtl 
+                ? Icons.chevron_left 
+                : Icons.chevron_right,
             color: AppColors.textSecondary,
             size: 20,
           ),
         ),
         _buildSettingsItem(
           icon: Icons.dark_mode_outlined,
-          title: 'Dark Mode',
-          subtitle: 'Enable dark mode for a\ncomfortable viewing experience',
+          title: AppLocalizations.of(context)?.darkMode ?? 'Dark Mode',
+          subtitle: AppLocalizations.of(context)?.darkModeDescription ?? 'Enable dark mode for a\ncomfortable viewing experience',
           trailing: Switch(
-            value: _darkMode,
+            value: themeProvider.isDarkMode,
             onChanged: (value) {
-              setState(() {
-                _darkMode = value;
-              });
-              _showComingSoon('Dark mode');
+              themeProvider.toggleTheme();
             },
             activeColor: AppColors.primaryBlue,
           ),
@@ -237,12 +247,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'API Configuration',
+        Text(
+          AppLocalizations.of(context)?.apiConfiguration ?? 'API Configuration',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
@@ -266,9 +276,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'AI Provider Keys',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)?.aiProviderKeys ?? 'AI Provider Keys',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primaryBlue,
@@ -277,9 +287,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Configure your API keys to enable AI-powered learning features',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(context)?.apiKeysDescription ?? 'Configure your API keys to enable AI-powered learning features',
+                style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
@@ -289,7 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 16),
         _buildApiKeyField(
-          label: 'OpenAI API Key',
+          label: AppLocalizations.of(context)?.openaiApiKey ?? 'OpenAI API Key',
           controller: _openaiController,
           obscureText: _obscureOpenAI,
           onVisibilityToggle: () {
@@ -300,7 +310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 12),
         _buildApiKeyField(
-          label: 'Google Gemini API Key',
+          label: AppLocalizations.of(context)?.geminiApiKey ?? 'Google Gemini API Key',
           controller: _geminiController,
           obscureText: _obscureGemini,
           onVisibilityToggle: () {
@@ -311,7 +321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 12),
         _buildApiKeyField(
-          label: 'Anthropic Claude API Key',
+          label: AppLocalizations.of(context)?.anthropicApiKey ?? 'Anthropic Claude API Key',
           controller: _anthropicController,
           obscureText: _obscureAnthropic,
           onVisibilityToggle: () {
@@ -342,9 +352,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
-                : const Text(
-                    'Save API Keys',
-                    style: TextStyle(
+                : Text(
+                    AppLocalizations.of(context)?.saveApiKeys ?? 'Save API Keys',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -359,19 +369,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Notifications',
+        Text(
+          AppLocalizations.of(context)?.notifications ?? 'Notifications',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
         _buildSettingsItem(
           icon: Icons.notifications_outlined,
-          title: 'App Notifications',
-          subtitle: 'Receive notifications for new\ncontent and updates',
+          title: AppLocalizations.of(context)?.appNotifications ?? 'App Notifications',
+          subtitle: AppLocalizations.of(context)?.appNotificationsDescription ?? 'Receive notifications for new\ncontent and updates',
           trailing: Switch(
             value: _appNotifications,
             onChanged: (value) {
@@ -384,8 +394,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         _buildSettingsItem(
           icon: Icons.email_outlined,
-          title: 'Email Notifications',
-          subtitle: 'Get email notifications for\nimportant updates',
+          title: AppLocalizations.of(context)?.emailNotifications ?? 'Email Notifications',
+          subtitle: AppLocalizations.of(context)?.emailNotificationsDescription ?? 'Get email notifications for\nimportant updates',
           trailing: Switch(
             value: _emailNotifications,
             onChanged: (value) {
@@ -404,33 +414,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Support',
+        Text(
+          AppLocalizations.of(context)?.support ?? 'Support',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
         _buildSettingsItem(
           icon: Icons.help_outline,
-          title: 'Help Center',
-          subtitle: 'Get help and support',
+          title: AppLocalizations.of(context)?.helpCenter ?? 'Help Center',
+          subtitle: AppLocalizations.of(context)?.getHelp ?? 'Get help and support',
           onTap: () => _showComingSoon('Help Center'),
-          trailing: const Icon(
-            Icons.chevron_right,
+          trailing: Icon(
+            Directionality.of(context) == TextDirection.rtl 
+                ? Icons.chevron_left 
+                : Icons.chevron_right,
             color: AppColors.textSecondary,
             size: 20,
           ),
         ),
         _buildSettingsItem(
           icon: Icons.chat_bubble_outline,
-          title: 'Contact Us',
-          subtitle: 'Contact us for assistance',
+          title: AppLocalizations.of(context)?.contactUs ?? 'Contact Us',
+          subtitle: AppLocalizations.of(context)?.contactSupport ?? 'Contact us for assistance',
           onTap: () => _showComingSoon('Contact support'),
-          trailing: const Icon(
-            Icons.chevron_right,
+          trailing: Icon(
+            Directionality.of(context) == TextDirection.rtl 
+                ? Icons.chevron_left 
+                : Icons.chevron_right,
             color: AppColors.textSecondary,
             size: 20,
           ),
@@ -442,7 +456,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildBottomNavigation() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -459,19 +473,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           } else if (index == 1) {
             // Progress - coming soon
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Progress tracking coming soon!'),
+              SnackBar(
+                content: Text(AppLocalizations.of(context)?.progressTracking ?? 'Progress tracking coming soon!'),
                 backgroundColor: AppColors.primaryBlue,
-                duration: Duration(seconds: 2),
+                duration: const Duration(seconds: 2),
               ),
             );
           }
           // Settings tab (index 2) - already here
         },
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF007AFF),
-        unselectedItemColor: const Color(0xFF888888),
+        backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? Theme.of(context).cardColor,
+        selectedItemColor: Theme.of(context).bottomNavigationBarTheme.selectedItemColor ?? const Color(0xFF007AFF),
+        unselectedItemColor: Theme.of(context).bottomNavigationBarTheme.unselectedItemColor ?? const Color(0xFF888888),
         elevation: 0,
         selectedLabelStyle: const TextStyle(
           fontSize: 12,
@@ -481,21 +495,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           fontSize: 12,
           fontWeight: FontWeight.w400,
         ),
-        items: const [
+        items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
-            label: 'Home',
+            label: AppLocalizations.of(context)?.home ?? 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.trending_up_outlined),
             activeIcon: Icon(Icons.trending_up),
-            label: 'Progress',
+            label: AppLocalizations.of(context)?.progress ?? 'Progress',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),
             activeIcon: Icon(Icons.settings),
-            label: 'Settings',
+            label: AppLocalizations.of(context)?.settings ?? 'Settings',
           ),
         ],
       ),
@@ -520,7 +534,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: Colors.orange.withOpacity(0.2),
-                backgroundImage: const AssetImage('assets/images/profile_placeholder.png'), // You can add a placeholder image
+                // backgroundImage: const AssetImage('assets/images/profile_placeholder.png'), // You can add a placeholder image
                 child: const Icon(
                   Icons.person,
                   color: Colors.orange,
@@ -531,12 +545,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.grey[800] 
+                      : Colors.grey[100],
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   icon,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
                   size: 20,
                 ),
               ),
@@ -547,18 +563,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).textTheme.titleMedium?.color,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
                       height: 1.3,
                     ),
                   ),
@@ -633,33 +649,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showLanguageSelector() {
+  void _showLanguageSelector(LanguageProvider languageProvider) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Select Language',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 20),
-            ...['English', 'Spanish', 'French', 'German', 'Chinese'].map(
-              (language) => ListTile(
-                title: Text(language),
-                trailing: _selectedLanguage == language
-                    ? const Icon(Icons.check, color: AppColors.primaryBlue)
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _selectedLanguage = language;
-                  });
-                  Navigator.pop(context);
+            Text(
+              AppLocalizations.of(context)?.selectLanguage ?? 'Select Language',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).textTheme.titleLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: LanguageProvider.supportedLanguages.length,
+                itemBuilder: (context, index) {
+                  final language = LanguageProvider.supportedLanguages[index];
+                  final isSelected = language['code'] == languageProvider.currentLocale.languageCode;
+                  
+                  return ListTile(
+                    title: Text(
+                      language['name']!,
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      language['nativeName']!,
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check, color: AppColors.primaryBlue)
+                        : null,
+                    onTap: () {
+                      languageProvider.changeLanguage(language['code']!);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)?.languageChanged(language['name']!) ?? 'Language changed to ${language['name']}'),
+                          backgroundColor: AppColors.success,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  );
                 },
               ),
             ),
@@ -672,7 +733,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showComingSoon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$feature coming soon!'),
+        content: Text(AppLocalizations.of(context)?.comingSoon(feature) ?? '$feature coming soon!'),
         backgroundColor: AppColors.primaryBlue,
         duration: const Duration(seconds: 2),
       ),

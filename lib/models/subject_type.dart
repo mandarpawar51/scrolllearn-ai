@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../services/localization_service.dart';
 
 enum SubjectType {
   math('Math', Icons.calculate, Color(0xFF4CAF50)),
@@ -11,6 +13,22 @@ enum SubjectType {
   final String displayName;
   final IconData icon;
   final Color color;
+  
+  String getLocalizedName(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) return displayName;
+    
+    switch (this) {
+      case SubjectType.math:
+        return localizations.math;
+      case SubjectType.science:
+        return localizations.science;
+      case SubjectType.history:
+        return localizations.history;
+      case SubjectType.geography:
+        return localizations.geography;
+    }
+  }
   
   static List<SubjectType> get allSubjects => SubjectType.values;
 }

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../blocs/gesture_bloc.dart';
 import '../models/subject_type.dart';
 import '../utils/app_colors.dart';
+import '../providers/theme_provider.dart';
+import '../providers/language_provider.dart';
+import '../services/localization_service.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -113,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           return false;
         },
         child: Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             child: BlocListener<GestureBloc, GestureBlocState>(
               listener: (context, state) {
@@ -172,25 +177,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 20, 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            _currentSubject.displayName,
-            style: const TextStyle(
+            _currentSubject.getLocalizedName(context),
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
+              color: Theme.of(context).textTheme.titleLarge?.color,
             ),
           ),
           IconButton(
             onPressed: () => _showSubjectMenu(),
-            icon: const Icon(
+            icon: Icon(
               Icons.menu,
-              color: Color(0xFF666666),
+              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
               size: 24,
             ),
             padding: EdgeInsets.zero,
@@ -204,52 +209,52 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildProblemContent() {
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Problem illustration/diagram area
-            _buildProblemIllustration(),
-            
-            const SizedBox(height: 32),
-            
-            // Question text
-            Text(
-              _currentQuestion,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Problem illustration/diagram area
+              _buildProblemIllustration(),
+              
+              const SizedBox(height: 32),
+              
+              // Question text
+              Text(
+                _currentQuestion,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).textTheme.titleLarge?.color,
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            const Text(
-              'Enter your answer below:',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF888888),
+              
+              const SizedBox(height: 12),
+              
+              Text(
+                'Enter your answer below:',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Answer input field
-            _buildAnswerInput(),
-            
-            const SizedBox(height: 24),
-            
-            // Show solution button
-            _buildShowSolutionButton(),
-            
-            // Solution display
-            if (_showSolution) _buildSolutionDisplay(),
-            
-            const Spacer(),
-          ],
+              
+              const SizedBox(height: 24),
+              
+              // Answer input field
+              _buildAnswerInput(),
+              
+              const SizedBox(height: 24),
+              
+              // Show solution button
+              _buildShowSolutionButton(),
+              
+              // Solution display
+              if (_showSolution) _buildSolutionDisplay(),
+            ],
+          ),
         ),
       ),
     );
@@ -260,9 +265,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       width: double.infinity,
       height: 200,
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: _currentSubject == SubjectType.math
           ? _buildMathDiagram()
@@ -339,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 12),
           Text(
-            '${_currentSubject.displayName} Problem',
+            '${_currentSubject.getLocalizedName(context)} Problem',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w500,
@@ -354,24 +359,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildAnswerInput() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: TextField(
         controller: _answerController,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: 'Answer',
           hintStyle: TextStyle(
-            color: Color(0xFFADB5BD),
+            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
             fontSize: 16,
           ),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
-          color: Color(0xFF1A1A1A),
+          color: Theme.of(context).textTheme.bodyLarge?.color,
         ),
         onChanged: (value) {
           setState(() {
@@ -448,7 +453,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildBottomNavigation() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -466,9 +471,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _handleBottomNavigation(index);
         },
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF007AFF),
-        unselectedItemColor: const Color(0xFF888888),
+        backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? Theme.of(context).cardColor,
+        selectedItemColor: Theme.of(context).bottomNavigationBarTheme.selectedItemColor ?? const Color(0xFF007AFF),
+        unselectedItemColor: Theme.of(context).bottomNavigationBarTheme.unselectedItemColor ?? const Color(0xFF888888),
         elevation: 0,
         selectedLabelStyle: const TextStyle(
           fontSize: 12,
@@ -478,21 +483,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           fontSize: 12,
           fontWeight: FontWeight.w400,
         ),
-        items: const [
+        items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
-            label: 'Home',
+            label: AppLocalizations.of(context)?.home ?? 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.trending_up_outlined),
             activeIcon: Icon(Icons.trending_up),
-            label: 'Progress',
+            label: AppLocalizations.of(context)?.progress ?? 'Progress',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),
             activeIcon: Icon(Icons.settings),
-            label: 'Settings',
+            label: AppLocalizations.of(context)?.settings ?? 'Settings',
           ),
         ],
       ),
@@ -509,9 +514,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     // Show subject switch feedback
+    final localizations = AppLocalizations.of(context);
+    final switchedMessage = localizations?.switchedTo(newSubject.getLocalizedName(context)) ?? 
+                           'Switched to ${newSubject.getLocalizedName(context)}';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Switched to ${newSubject.displayName}'),
+        content: Text(switchedMessage),
         backgroundColor: newSubject.color,
         duration: const Duration(seconds: 1),
       ),
@@ -521,22 +529,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _showSubjectMenu() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Select Subject',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
+                color: Theme.of(context).textTheme.titleLarge?.color,
               ),
             ),
             const SizedBox(height: 20),
             ...SubjectType.values.map((subject) => ListTile(
               leading: Icon(subject.icon, color: subject.color),
-              title: Text(subject.displayName),
+              title: Text(
+                subject.getLocalizedName(context),
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _switchSubject(subject);
@@ -590,15 +608,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   String _getQuestionForSubject(SubjectType subject) {
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) {
+      // Fallback to English if localization is not available
+      switch (subject) {
+        case SubjectType.math:
+          return 'Solve for x: 2x + 5 = 15';
+        case SubjectType.science:
+          return 'What is the chemical formula for water?';
+        case SubjectType.history:
+          return 'In which year did World War II end?';
+        case SubjectType.geography:
+          return 'What is the capital of Australia?';
+      }
+    }
     switch (subject) {
       case SubjectType.math:
-        return 'Solve for x: 2x + 5 = 15';
+        return localizations.solveForX;
       case SubjectType.science:
-        return 'What is the chemical formula for water?';
+        return localizations.chemicalFormula;
       case SubjectType.history:
-        return 'In which year did World War II end?';
+        return localizations.worldWarEnd;
       case SubjectType.geography:
-        return 'What is the capital of Australia?';
+        return localizations.australiaCapital;
     }
   }
 
@@ -632,9 +664,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   right: 0,
                   child: Column(
                     children: [
-                      const Text(
-                        'Swipe to Switch Subjects',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)?.swipeToSwitch ?? 'Swipe to Switch Subjects',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.w600,
@@ -642,9 +674,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Swipe left or right to explore\\ndifferent subjects',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)?.swipeInstructions ?? 'Swipe left or right to explore\ndifferent subjects',
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 16,
                         ),
@@ -673,9 +705,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   right: 20,
                   child: TextButton(
                     onPressed: _hideTutorial,
-                    child: const Text(
-                      'Skip',
-                      style: TextStyle(
+                    child: Text(
+                      AppLocalizations.of(context)?.skip ?? 'Skip',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -715,13 +747,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildSubjectIndicators() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
       children: SubjectType.values.map((subject) {
         final isActive = subject == _currentSubject;
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: isActive ? subject.color.withOpacity(0.8) : Colors.white.withOpacity(0.2),
             borderRadius: BorderRadius.circular(20),
@@ -736,14 +769,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Icon(
                 subject.icon,
                 color: isActive ? Colors.white : Colors.white70,
-                size: 16,
+                size: 14,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Text(
-                subject.displayName,
+                subject.getLocalizedName(context),
                 style: TextStyle(
                   color: isActive ? Colors.white : Colors.white70,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
               ),
