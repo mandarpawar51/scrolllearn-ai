@@ -4,11 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../blocs/gesture_bloc.dart';
 import '../models/subject_type.dart';
+import '../models/problem.dart';
 import '../utils/app_colors.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/localization_service.dart';
 import 'settings_screen.dart';
+import '../providers/ai_provider.dart';
+import '../models/ai_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,8 +24,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentTabIndex = 0;
   final TextEditingController _answerController = TextEditingController();
   SubjectType _currentSubject = SubjectType.math;
-  String _currentQuestion = "Solve for x: 2x + 5 = 15";
+  Problem? _currentProblem;
   bool _showSolution = false;
+  bool _isLoadingQuestion = false;
+  bool _isSolutionDisplayedInAnswerBox = false;
   
   // Tutorial animation controllers
   late AnimationController _tutorialController;
@@ -37,6 +42,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _initializeTutorialAnimations();
     _startTutorial();
+    _loadInitialQuestion();
+  }
+
+  Future<void> _loadInitialQuestion() async {
+    await _getQuestionForSubject(_currentSubject);
   }
 
   @override
@@ -221,15 +231,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               
               const SizedBox(height: 32),
               
-              // Question text
-              Text(
-                _currentQuestion,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).textTheme.titleLarge?.color,
-                ),
-              ),
+              // Question text or loading indicator
+              _isLoadingQuestion
+                  ? Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(color: AppColors.primaryBlue),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Generating ${_currentSubject.getLocalizedName(context)} question...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _currentProblem != null
+                      ? Text(
+                          _currentProblem!.question,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).textTheme.titleLarge?.color,
+                            height: 1.4,
+                          ),
+                        )
+                      : Text(
+                          _getFallbackQuestionForSubject(_currentSubject),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).textTheme.titleLarge?.color,
+                          ),
+                        ),
               
               const SizedBox(height: 12),
               
@@ -248,11 +284,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               
               const SizedBox(height: 24),
               
-              // Show solution button
-              _buildShowSolutionButton(),
+              // Action buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Generate new question button
+                  ElevatedButton.icon(
+                    onPressed: _isLoadingQuestion ? null : () => _getQuestionForSubject(_currentSubject),
+                    icon: _isLoadingQuestion 
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.refresh, size: 18),
+                    label: Text(_isLoadingQuestion ? 'Generating...' : 'New Question'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _currentSubject.color.withOpacity(0.1),
+                      foregroundColor: _currentSubject.color,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                  
+                  // Show solution button
+                  _buildShowSolutionButton(),
+                ],
+              ),
               
               // Solution display
-              if (_showSolution) _buildSolutionDisplay(),
+              // Solution display removed as per user request
             ],
           ),
         ),
@@ -365,6 +432,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       child: TextField(
         controller: _answerController,
+        readOnly: _isSolutionDisplayedInAnswerBox, // Make read-only when solution is displayed
         decoration: InputDecoration(
           hintText: 'Answer',
           hintStyle: TextStyle(
@@ -376,11 +444,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         style: TextStyle(
           fontSize: 16,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: _isSolutionDisplayedInAnswerBox ? AppColors.success : Theme.of(context).textTheme.bodyLarge?.color,
         ),
         onChanged: (value) {
           setState(() {
             _showSolution = false;
+            _isSolutionDisplayedInAnswerBox = false; // Clear color when user types
           });
         },
       ),
@@ -388,32 +457,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildShowSolutionButton() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: ElevatedButton(
-        onPressed: _showSolutionAction,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF007AFF),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 0,
-          shadowColor: Colors.transparent,
+    return ElevatedButton.icon(
+      onPressed: _showSolutionAction,
+      icon: Icon(_showSolution ? Icons.visibility_off : Icons.visibility, size: 18),
+      label: Text(_showSolution ? 'Hide Solution' : 'Show Solution'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF007AFF),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: const Text(
-          'Show Solution',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        elevation: 0,
+        shadowColor: Colors.transparent,
       ),
     );
   }
 
   Widget _buildSolutionDisplay() {
+    final solutionText = _currentProblem?.solution ?? _getSolutionForCurrentProblem();
+    
     return Container(
       margin: const EdgeInsets.only(top: 20),
       padding: const EdgeInsets.all(16),
@@ -427,28 +490,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Solution:',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.success,
-            ),
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline,
+                color: AppColors.success,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Solution:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.success,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            _getSolutionForCurrentProblem(),
-            style: const TextStyle(
+            solutionText,
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+              height: 1.4,
             ),
           ),
+          // Removed explanation section as per user request to only show main answer
         ],
       ),
     );
   }
-
-
 
   Widget _buildBottomNavigation() {
     return Container(
@@ -505,25 +578,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // Action methods
-  void _switchSubject(SubjectType newSubject) {
+  Future<void> _switchSubject(SubjectType newSubject) async {
     setState(() {
+      _isLoadingQuestion = true;
       _currentSubject = newSubject;
-      _currentQuestion = _getQuestionForSubject(newSubject);
+      _currentProblem = null;
       _answerController.clear();
       _showSolution = false;
     });
 
+    await _getQuestionForSubject(newSubject);
+
     // Show subject switch feedback
-    final localizations = AppLocalizations.of(context);
-    final switchedMessage = localizations?.switchedTo(newSubject.getLocalizedName(context)) ?? 
-                           'Switched to ${newSubject.getLocalizedName(context)}';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(switchedMessage),
-        backgroundColor: newSubject.color,
-        duration: const Duration(seconds: 1),
-      ),
-    );
+    // Removed SnackBar as per user request
   }
 
   void _showSubjectMenu() {
@@ -547,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             const SizedBox(height: 20),
-            ...SubjectType.values.map((subject) => ListTile(
+            ...SubjectType.values.where((s) => s != SubjectType.none).map((subject) => ListTile(
               leading: Icon(subject.icon, color: subject.color),
               title: Text(
                 subject.getLocalizedName(context),
@@ -566,9 +633,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showSolutionAction() {
+    void _showSolutionAction() {
     setState(() {
-      _showSolution = true;
+      _showSolution = !_showSolution;
+      if (_showSolution) { // If showing solution, populate answer box
+        final solutionText = _currentProblem?.solution ?? _getSolutionForCurrentProblem();
+        _answerController.text = solutionText;
+        _isSolutionDisplayedInAnswerBox = true; // Set to true when solution is shown
+      } else { // If hiding solution, clear answer box
+        _answerController.clear();
+        _isSolutionDisplayedInAnswerBox = false; // Set to false when solution is hidden
+      }
     });
   }
 
@@ -607,7 +682,81 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  String _getQuestionForSubject(SubjectType subject) {
+  Future<void> _getQuestionForSubject(SubjectType subject) async {
+    final aiProviderManager = Provider.of<AIProviderManager>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+
+    try {
+      // Get current language for AI generation
+      String currentLanguage = _getLanguageName(languageProvider.currentLocale.languageCode);
+      
+      // Use the improved subject-specific question generation with language support
+      final questionText = await aiProviderManager.generateSubjectQuestion(subject, language: currentLanguage);
+      
+      // Create a Problem object from the AI response
+      final problem = Problem.fromAIResponse(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        subject: subject,
+        aiResponse: questionText,
+      );
+      
+      setState(() {
+        _currentProblem = problem;
+        _isLoadingQuestion = false;
+      });
+      
+    } catch (e) {
+      debugPrint('Error generating question with AI: $e');
+      
+      // Show more specific error messages to the user
+      String errorMessage = 'Failed to generate question';
+      if (e.toString().contains('API key not found') || e.toString().contains('No AI provider configured')) {
+        errorMessage = 'Please configure an API key in settings to generate questions';
+      } else if (e.toString().contains('Invalid API key')) {
+        errorMessage = 'Invalid API key. Please check your settings';
+      } else if (e.toString().contains('Rate limit')) {
+        errorMessage = 'Rate limit exceeded. Please try again in a moment';
+      } else if (e.toString().contains('timeout') || e.toString().contains('connection')) {
+        errorMessage = 'Connection error. Please check your internet connection';
+      }
+      
+      // Show error to user but don't throw - use fallback instead
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppColors.warning,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Settings',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+              },
+            ),
+          ),
+        );
+      }
+      
+      // Create fallback problem
+      final fallbackProblem = Problem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        subject: subject,
+        question: _getFallbackQuestionForSubject(subject),
+        solution: _getSolutionForCurrentProblem(),
+      );
+      
+      setState(() {
+        _currentProblem = fallbackProblem;
+        _isLoadingQuestion = false;
+      });
+    }
+  }
+
+  String _getFallbackQuestionForSubject(SubjectType subject) {
     final localizations = AppLocalizations.of(context);
     if (localizations == null) {
       // Fallback to English if localization is not available
@@ -620,6 +769,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           return 'In which year did World War II end?';
         case SubjectType.geography:
           return 'What is the capital of Australia?';
+        case SubjectType.none:
+          return 'Please select a subject.';
       }
     }
     switch (subject) {
@@ -631,19 +782,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return localizations.worldWarEnd;
       case SubjectType.geography:
         return localizations.australiaCapital;
+      case SubjectType.none:
+        return 'Please select a subject.';
     }
   }
 
   String _getSolutionForCurrentProblem() {
     switch (_currentSubject) {
       case SubjectType.math:
-        return '2x + 5 = 15\\n2x = 15 - 5\\n2x = 10\\nx = 5';
+        return '2x + 5 = 15\n2x = 15 - 5\n2x = 10\nx = 5';
       case SubjectType.science:
         return 'H₂O - Water consists of two hydrogen atoms and one oxygen atom.';
       case SubjectType.history:
         return '1945 - World War II ended on September 2, 1945.';
       case SubjectType.geography:
         return 'Canberra - The capital of Australia is Canberra, not Sydney or Melbourne.';
+      case SubjectType.none:
+        return 'No solution available for this subject.';
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  String _getLanguageName(String languageCode) {
+    switch (languageCode) {
+      case 'hi':
+        return 'Hindi';
+      case 'bn':
+        return 'Bengali';
+      case 'te':
+        return 'Telugu';
+      case 'mr':
+        return 'Marathi';
+      case 'ta':
+        return 'Tamil';
+      case 'gu':
+        return 'Gujarati';
+      case 'kn':
+        return 'Kannada';
+      case 'ml':
+        return 'Malayalam';
+      case 'pa':
+        return 'Punjabi';
+      case 'or':
+        return 'Odia';
+      case 'as':
+        return 'Assamese';
+      case 'ur':
+        return 'Urdu';
+      default:
+        return 'English';
     }
   }
 
@@ -751,7 +947,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       alignment: WrapAlignment.center,
       spacing: 8,
       runSpacing: 8,
-      children: SubjectType.values.map((subject) {
+      children: SubjectType.values.where((s) => s != SubjectType.none).map((subject) {
         final isActive = subject == _currentSubject;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -786,7 +982,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }).toList(),
     );
   }
-
 }
 
 // Custom painter for math diagram
@@ -902,4 +1097,3 @@ class MathDiagramPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

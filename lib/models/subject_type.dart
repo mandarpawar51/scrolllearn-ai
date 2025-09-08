@@ -6,7 +6,8 @@ enum SubjectType {
   math('Math', Icons.calculate, Color(0xFF4CAF50)),
   science('Science', Icons.science, Color(0xFF2196F3)),
   history('History', Icons.history_edu, Color(0xFFFF9800)),
-  geography('Geography', Icons.public, Color(0xFF9C27B0));
+  geography('Geography', Icons.public, Color(0xFF9C27B0)),
+  none('None', Icons.help_outline, Color(0xFF757575));
 
   const SubjectType(this.displayName, this.icon, this.color);
   
@@ -27,6 +28,8 @@ enum SubjectType {
         return localizations.history;
       case SubjectType.geography:
         return localizations.geography;
+      case SubjectType.none:
+        return 'None';
     }
   }
   

@@ -19,6 +19,7 @@
   "openaiApiKey": "ওপেনএআই এপিআই কী",
   "geminiApiKey": "গুগল জেমিনি এপিআই কী",
   "anthropicApiKey": "অ্যানথ্রোপিক ক্লড এপিআই কী",
+  "openrouterApiKey": "ওপেনরাউটার এপিআই কী",
   "saveApiKeys": "এপিআই কী সংরক্ষণ করুন",
   "notifications": "বিজ্ঞপ্তি",
   "appNotifications": "অ্যাপ বিজ্ঞপ্তি",

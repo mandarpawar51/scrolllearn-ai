@@ -6,6 +6,8 @@ import '../repositories/secure_storage_repository.dart';
 import '../utils/app_colors.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
+import '../models/ai_provider.dart'; // Added
+import '../providers/ai_provider.dart'; // Added
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _openaiController = TextEditingController();
   final _geminiController = TextEditingController();
   final _anthropicController = TextEditingController();
+  final _openrouterController = TextEditingController();
   
   // Settings state
   bool _appNotifications = true;
@@ -30,13 +33,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _obscureOpenAI = true;
   bool _obscureGemini = true;
   bool _obscureAnthropic = true;
+  bool _obscureOpenRouter = true;
   bool _isLoadingKeys = false;
+
+  AIProvider? _selectedAIProvider; // Added
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
     _loadExistingKeys();
+    // Initialize _selectedAIProvider from AIProviderManager
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final aiProviderManager = Provider.of<AIProviderManager>(context, listen: false);
+      setState(() {
+        _selectedAIProvider = aiProviderManager.selectedProvider;
+      });
+    });
   }
 
   @override
@@ -44,6 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _openaiController.dispose();
     _geminiController.dispose();
     _anthropicController.dispose();
+    _openrouterController.dispose();
     super.dispose();
   }
 
@@ -64,10 +78,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final openaiKey = await _secureStorage.getOpenAIKey();
       final geminiKey = await _secureStorage.getGeminiKey();
       final anthropicKey = await _secureStorage.getAnthropicKey();
+      final openrouterKey = await _secureStorage.getOpenRouterKey();
 
       _openaiController.text = openaiKey ?? '';
       _geminiController.text = geminiKey ?? '';
       _anthropicController.text = anthropicKey ?? '';
+      _openrouterController.text = openrouterKey ?? '';
     } catch (e) {
       _showErrorSnackBar(AppLocalizations.of(context)?.apiKeysLoadFailed(e.toString()) ?? 'Failed to load API keys: $e');
     } finally {
@@ -92,8 +108,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (_anthropicController.text.isNotEmpty) {
         await _secureStorage.setAnthropicKey(_anthropicController.text.trim());
       }
+      if (_openrouterController.text.isNotEmpty) {
+        await _secureStorage.setOpenRouterKey(_openrouterController.text.trim());
+      }
 
-      _showSuccessSnackBar(AppLocalizations.of(context)?.apiKeysSaved ?? 'API keys saved successfully');
+      // Removed SnackBar as per user request
     } catch (e) {
       _showErrorSnackBar(AppLocalizations.of(context)?.apiKeysSaveFailed(e.toString()) ?? 'Failed to save API keys: $e');
     } finally {
@@ -294,6 +313,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: AppColors.textSecondary,
                 ),
               ),
+              const SizedBox(height: 16), // Added
+              // AI Provider Selection Dropdown
+              DropdownButtonFormField<AIProvider>( // Added
+                value: _selectedAIProvider,
+                decoration: InputDecoration(
+                  labelText: 'Select AI Provider',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).inputDecorationTheme.fillColor,
+                ),
+                items: AIProvider.values.map((provider) {
+                  return DropdownMenuItem(
+                    value: provider,
+                    child: Text(provider.name.toUpperCase()),
+                  );
+                }).toList(),
+                onChanged: (AIProvider? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedAIProvider = newValue;
+                    });
+                    Provider.of<AIProviderManager>(context, listen: false).setSelectedProvider(newValue);
+                  }
+                },
+              ),
+              const SizedBox(height: 16), // Added
             ],
           ),
         ),
@@ -327,6 +374,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onVisibilityToggle: () {
             setState(() {
               _obscureAnthropic = !_obscureAnthropic;
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildApiKeyField(
+          label: AppLocalizations.of(context)?.openrouterApiKey ?? 'OpenRouter API Key',
+          controller: _openrouterController,
+          obscureText: _obscureOpenRouter,
+          onVisibilityToggle: () {
+            setState(() {
+              _obscureOpenRouter = !_obscureOpenRouter;
             });
           },
         ),
@@ -472,13 +530,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Navigator.pop(context); // Go back to home
           } else if (index == 1) {
             // Progress - coming soon
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(AppLocalizations.of(context)?.progressTracking ?? 'Progress tracking coming soon!'),
-                backgroundColor: AppColors.primaryBlue,
-                duration: const Duration(seconds: 2),
-              ),
-            );
+            // Removed SnackBar as per user request
           }
           // Settings tab (index 2) - already here
         },
@@ -597,13 +649,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (controller.text.isNotEmpty)
+              TextButton.icon(
+                onPressed: () => _deleteApiKey(controller, label),
+                icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                label: const Text('Delete', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -631,22 +698,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
               horizontal: 16,
               vertical: 12,
             ),
-            suffixIcon: IconButton(
-              onPressed: onVisibilityToggle,
-              icon: Icon(
-                obscureText ? Icons.visibility_off : Icons.visibility,
-                color: AppColors.textSecondary,
-                size: 20,
-              ),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (controller.text.isNotEmpty)
+                  IconButton(
+                    onPressed: () => _clearApiKey(controller),
+                    icon: const Icon(Icons.clear, color: AppColors.textSecondary, size: 18),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                IconButton(
+                  onPressed: onVisibilityToggle,
+                  icon: Icon(
+                    obscureText ? Icons.visibility_off : Icons.visibility,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
+                ),
+              ],
             ),
           ),
           style: const TextStyle(
             fontSize: 14,
             color: AppColors.textPrimary,
           ),
+          onChanged: (value) {
+            setState(() {}); // Refresh to show/hide delete button
+          },
         ),
       ],
     );
+  }
+
+  void _deleteApiKey(TextEditingController controller, String label) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete $label'),
+        content: Text('Are you sure you want to delete this API key? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // Clear from controller
+              controller.clear();
+              
+              // Clear from secure storage
+              if (label.contains('OpenAI')) {
+                await _secureStorage.setOpenAIKey('');
+              } else if (label.contains('Gemini')) {
+                await _secureStorage.setGeminiKey('');
+              } else if (label.contains('Anthropic')) {
+                await _secureStorage.setAnthropicKey('');
+              } else if (label.contains('OpenRouter')) {
+                await _secureStorage.setOpenRouterKey('');
+              }
+              
+              setState(() {});
+              Navigator.pop(context);
+              
+              // Removed SnackBar as per user request
+            },
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _clearApiKey(TextEditingController controller) {
+    controller.clear();
+    setState(() {});
   }
 
   void _showLanguageSelector(LanguageProvider languageProvider) {
@@ -712,13 +838,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: () {
                       languageProvider.changeLanguage(language['code']!);
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(AppLocalizations.of(context)?.languageChanged(language['name']!) ?? 'Language changed to ${language['name']}'),
-                          backgroundColor: AppColors.success,
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
+                      // Removed SnackBar as per user request
                     },
                   );
                 },
@@ -730,25 +850,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(AppLocalizations.of(context)?.comingSoon(feature) ?? '$feature coming soon!'),
-        backgroundColor: AppColors.primaryBlue,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.success,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
+  
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -756,6 +858,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(message),
         backgroundColor: AppColors.error,
         duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showComingSoon(String featureName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$featureName is coming soon!'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }

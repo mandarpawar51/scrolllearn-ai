@@ -19,6 +19,7 @@
   "openaiApiKey": "ओपनएआई एपीआई कुंजी",
   "geminiApiKey": "गूगल जेमिनी एपीआई कुंजी",
   "anthropicApiKey": "एंथ्रोपिक क्लॉड एपीआई कुंजी",
+  "openrouterApiKey": "ओपनराउटर एपीआई कुंजी",
   "saveApiKeys": "एपीआई कुंजी सहेजें",
   "notifications": "सूचनाएं",
   "appNotifications": "ऐप सूचनाएं",

@@ -19,6 +19,7 @@
   "openaiApiKey": "OpenAI API விசை",
   "geminiApiKey": "Google Gemini API விசை",
   "anthropicApiKey": "Anthropic Claude API விசை",
+  "openrouterApiKey": "OpenRouter API விசை",
   "saveApiKeys": "API விசைகளை சேமிக்கவும்",
   "notifications": "அறிவிப்புகள்",
   "appNotifications": "பயன்பாட்டு அறிவிப்புகள்",

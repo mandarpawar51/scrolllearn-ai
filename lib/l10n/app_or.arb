@@ -19,6 +19,7 @@
   "openaiApiKey": "OpenAI API କି",
   "geminiApiKey": "Google Gemini API କି",
   "anthropicApiKey": "Anthropic Claude API କି",
+  "openrouterApiKey": "OpenRouter API କି",
   "saveApiKeys": "API କି ସେଭ କରନ୍ତୁ",
   "notifications": "ବିଜ୍ଞପ୍ତି",
   "appNotifications": "ଆପ ବିଜ୍ଞପ୍ତି",

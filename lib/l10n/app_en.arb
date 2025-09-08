@@ -19,6 +19,7 @@
   "openaiApiKey": "OpenAI API Key",
   "geminiApiKey": "Google Gemini API Key",
   "anthropicApiKey": "Anthropic Claude API Key",
+  "openrouterApiKey": "OpenRouter API Key",
   "saveApiKeys": "Save API Keys",
   "notifications": "Notifications",
   "appNotifications": "App Notifications",

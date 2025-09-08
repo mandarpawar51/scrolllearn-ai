@@ -5,6 +5,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'repositories/secure_storage_repository.dart';
+import 'providers/ai_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
 import 'screens/onboarding_screen.dart';
@@ -23,8 +25,11 @@ void main() async {
   
   // Initialize SharedPreferences
   await SharedPreferences.getInstance();
+
+  // Initialize SecureStorageRepository
+  final secureStorageRepository = SecureStorageRepository(); // Added
   
-  runApp(const ScrollLearnApp());
+  runApp(ScrollLearnApp(secureStorageRepository: secureStorageRepository)); // Modified
 }
 
 // Helper function to determine if a language is RTL
@@ -34,7 +39,9 @@ bool _isRTLLanguage(String languageCode) {
 }
 
 class ScrollLearnApp extends StatelessWidget {
-  const ScrollLearnApp({super.key});
+  final SecureStorageRepository secureStorageRepository; // Added
+
+  const ScrollLearnApp({super.key, required this.secureStorageRepository}); // Modified
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +49,10 @@ class ScrollLearnApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => AIProviderManager(secureStorageRepository)), // Added
       ],
-      child: Consumer2<ThemeProvider, LanguageProvider>(
-        builder: (context, themeProvider, languageProvider, child) {
+      child: Consumer3<ThemeProvider, LanguageProvider, AIProviderManager>( // Modified
+        builder: (context, themeProvider, languageProvider, aiProviderManager, child) { // Modified
           return MaterialApp(
             title: 'ScrollLearn AI',
             debugShowCheckedModeBanner: false,

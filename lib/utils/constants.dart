@@ -34,5 +34,9 @@ class AppConstants {
   static const String openRouterBaseUrl = 'https://openrouter.ai/api/v1';
   static const String openRouterModelsEndpoint = '/models';
   static const String openRouterChatEndpoint = '/chat/completions';
+  
+  // Gemini Configuration
+  static const String geminiBaseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+  static const String geminiGenerateEndpoint = '/models/gemini-2.5-flash:generateContent';
 }
 
