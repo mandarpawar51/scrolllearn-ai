@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../blocs/gesture_bloc.dart';
 import '../models/subject_type.dart';
+import '../models/problem.dart';
 import '../utils/app_colors.dart';
+import '../providers/theme_provider.dart';
+import '../providers/language_provider.dart';
+import '../services/localization_service.dart';
 import 'settings_screen.dart';
+import '../providers/ai_provider.dart';
+import '../models/ai_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,8 +24,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentTabIndex = 0;
   final TextEditingController _answerController = TextEditingController();
   SubjectType _currentSubject = SubjectType.math;
-  String _currentQuestion = "Solve for x: 2x + 5 = 15";
+  Problem? _currentProblem;
   bool _showSolution = false;
+  bool _isLoadingQuestion = false;
+  bool _isSolutionDisplayedInAnswerBox = false;
   
   // Tutorial animation controllers
   late AnimationController _tutorialController;
@@ -32,6 +42,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _initializeTutorialAnimations();
     _startTutorial();
+    _loadInitialQuestion();
+  }
+
+  Future<void> _loadInitialQuestion() async {
+    await _getQuestionForSubject(_currentSubject);
   }
 
   @override
@@ -113,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           return false;
         },
         child: Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             child: BlocListener<GestureBloc, GestureBlocState>(
               listener: (context, state) {
@@ -172,25 +187,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 20, 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            _currentSubject.displayName,
-            style: const TextStyle(
+            _currentSubject.getLocalizedName(context),
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
+              color: Theme.of(context).textTheme.titleLarge?.color,
             ),
           ),
           IconButton(
             onPressed: () => _showSubjectMenu(),
-            icon: const Icon(
+            icon: Icon(
               Icons.menu,
-              color: Color(0xFF666666),
+              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
               size: 24,
             ),
             padding: EdgeInsets.zero,
@@ -204,52 +219,109 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildProblemContent() {
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Problem illustration/diagram area
-            _buildProblemIllustration(),
-            
-            const SizedBox(height: 32),
-            
-            // Question text
-            Text(
-              _currentQuestion,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Problem illustration/diagram area
+              _buildProblemIllustration(),
+              
+              const SizedBox(height: 32),
+              
+              // Question text or loading indicator
+              _isLoadingQuestion
+                  ? Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(color: AppColors.primaryBlue),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Generating ${_currentSubject.getLocalizedName(context)} question...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _currentProblem != null
+                      ? Text(
+                          _currentProblem!.question,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).textTheme.titleLarge?.color,
+                            height: 1.4,
+                          ),
+                        )
+                      : Text(
+                          _getFallbackQuestionForSubject(_currentSubject),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).textTheme.titleLarge?.color,
+                          ),
+                        ),
+              
+              const SizedBox(height: 12),
+              
+              Text(
+                'Enter your answer below:',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            const Text(
-              'Enter your answer below:',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF888888),
+              
+              const SizedBox(height: 24),
+              
+              // Answer input field
+              _buildAnswerInput(),
+              
+              const SizedBox(height: 24),
+              
+              // Action buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Generate new question button
+                  ElevatedButton.icon(
+                    onPressed: _isLoadingQuestion ? null : () => _getQuestionForSubject(_currentSubject),
+                    icon: _isLoadingQuestion 
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.refresh, size: 18),
+                    label: Text(_isLoadingQuestion ? 'Generating...' : 'New Question'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _currentSubject.color.withOpacity(0.1),
+                      foregroundColor: _currentSubject.color,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                  
+                  // Show solution button
+                  _buildShowSolutionButton(),
+                ],
               ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Answer input field
-            _buildAnswerInput(),
-            
-            const SizedBox(height: 24),
-            
-            // Show solution button
-            _buildShowSolutionButton(),
-            
-            // Solution display
-            if (_showSolution) _buildSolutionDisplay(),
-            
-            const Spacer(),
-          ],
+              
+              // Solution display
+              // Solution display removed as per user request
+            ],
+          ),
         ),
       ),
     );
@@ -260,9 +332,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       width: double.infinity,
       height: 200,
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: _currentSubject == SubjectType.math
           ? _buildMathDiagram()
@@ -339,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 12),
           Text(
-            '${_currentSubject.displayName} Problem',
+            '${_currentSubject.getLocalizedName(context)} Problem',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w500,
@@ -354,28 +426,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildAnswerInput() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: TextField(
         controller: _answerController,
-        decoration: const InputDecoration(
+        readOnly: _isSolutionDisplayedInAnswerBox, // Make read-only when solution is displayed
+        decoration: InputDecoration(
           hintText: 'Answer',
           hintStyle: TextStyle(
-            color: Color(0xFFADB5BD),
+            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
             fontSize: 16,
           ),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
-          color: Color(0xFF1A1A1A),
+          color: _isSolutionDisplayedInAnswerBox ? AppColors.success : Theme.of(context).textTheme.bodyLarge?.color,
         ),
         onChanged: (value) {
           setState(() {
             _showSolution = false;
+            _isSolutionDisplayedInAnswerBox = false; // Clear color when user types
           });
         },
       ),
@@ -383,32 +457,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildShowSolutionButton() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: ElevatedButton(
-        onPressed: _showSolutionAction,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF007AFF),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 0,
-          shadowColor: Colors.transparent,
+    return ElevatedButton.icon(
+      onPressed: _showSolutionAction,
+      icon: Icon(_showSolution ? Icons.visibility_off : Icons.visibility, size: 18),
+      label: Text(_showSolution ? 'Hide Solution' : 'Show Solution'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF007AFF),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: const Text(
-          'Show Solution',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        elevation: 0,
+        shadowColor: Colors.transparent,
       ),
     );
   }
 
   Widget _buildSolutionDisplay() {
+    final solutionText = _currentProblem?.solution ?? _getSolutionForCurrentProblem();
+    
     return Container(
       margin: const EdgeInsets.only(top: 20),
       padding: const EdgeInsets.all(16),
@@ -422,33 +490,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Solution:',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.success,
-            ),
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline,
+                color: AppColors.success,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Solution:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.success,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            _getSolutionForCurrentProblem(),
-            style: const TextStyle(
+            solutionText,
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+              height: 1.4,
             ),
           ),
+          // Removed explanation section as per user request to only show main answer
         ],
       ),
     );
   }
 
-
-
   Widget _buildBottomNavigation() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -466,9 +544,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _handleBottomNavigation(index);
         },
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF007AFF),
-        unselectedItemColor: const Color(0xFF888888),
+        backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? Theme.of(context).cardColor,
+        selectedItemColor: Theme.of(context).bottomNavigationBarTheme.selectedItemColor ?? const Color(0xFF007AFF),
+        unselectedItemColor: Theme.of(context).bottomNavigationBarTheme.unselectedItemColor ?? const Color(0xFF888888),
         elevation: 0,
         selectedLabelStyle: const TextStyle(
           fontSize: 12,
@@ -478,21 +556,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           fontSize: 12,
           fontWeight: FontWeight.w400,
         ),
-        items: const [
+        items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
-            label: 'Home',
+            label: AppLocalizations.of(context)?.home ?? 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.trending_up_outlined),
             activeIcon: Icon(Icons.trending_up),
-            label: 'Progress',
+            label: AppLocalizations.of(context)?.progress ?? 'Progress',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),
             activeIcon: Icon(Icons.settings),
-            label: 'Settings',
+            label: AppLocalizations.of(context)?.settings ?? 'Settings',
           ),
         ],
       ),
@@ -500,43 +578,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // Action methods
-  void _switchSubject(SubjectType newSubject) {
+  Future<void> _switchSubject(SubjectType newSubject) async {
     setState(() {
+      _isLoadingQuestion = true;
       _currentSubject = newSubject;
-      _currentQuestion = _getQuestionForSubject(newSubject);
+      _currentProblem = null;
       _answerController.clear();
       _showSolution = false;
     });
 
+    await _getQuestionForSubject(newSubject);
+
     // Show subject switch feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Switched to ${newSubject.displayName}'),
-        backgroundColor: newSubject.color,
-        duration: const Duration(seconds: 1),
-      ),
-    );
+    // Removed SnackBar as per user request
   }
 
   void _showSubjectMenu() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Select Subject',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
+                color: Theme.of(context).textTheme.titleLarge?.color,
               ),
             ),
             const SizedBox(height: 20),
-            ...SubjectType.values.map((subject) => ListTile(
+            ...SubjectType.values.where((s) => s != SubjectType.none).map((subject) => ListTile(
               leading: Icon(subject.icon, color: subject.color),
-              title: Text(subject.displayName),
+              title: Text(
+                subject.getLocalizedName(context),
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _switchSubject(subject);
@@ -548,9 +633,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showSolutionAction() {
+    void _showSolutionAction() {
     setState(() {
-      _showSolution = true;
+      _showSolution = !_showSolution;
+      if (_showSolution) { // If showing solution, populate answer box
+        final solutionText = _currentProblem?.solution ?? _getSolutionForCurrentProblem();
+        _answerController.text = solutionText;
+        _isSolutionDisplayedInAnswerBox = true; // Set to true when solution is shown
+      } else { // If hiding solution, clear answer box
+        _answerController.clear();
+        _isSolutionDisplayedInAnswerBox = false; // Set to false when solution is hidden
+      }
     });
   }
 
@@ -589,29 +682,164 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  String _getQuestionForSubject(SubjectType subject) {
+  Future<void> _getQuestionForSubject(SubjectType subject) async {
+    final aiProviderManager = Provider.of<AIProviderManager>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+
+    try {
+      // Get current language for AI generation
+      String currentLanguage = _getLanguageName(languageProvider.currentLocale.languageCode);
+      
+      // Use the improved subject-specific question generation with language support
+      final questionText = await aiProviderManager.generateSubjectQuestion(subject, language: currentLanguage);
+      
+      // Create a Problem object from the AI response
+      final problem = Problem.fromAIResponse(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        subject: subject,
+        aiResponse: questionText,
+      );
+      
+      setState(() {
+        _currentProblem = problem;
+        _isLoadingQuestion = false;
+      });
+      
+    } catch (e) {
+      debugPrint('Error generating question with AI: $e');
+      
+      // Show more specific error messages to the user
+      String errorMessage = 'Failed to generate question';
+      if (e.toString().contains('API key not found') || e.toString().contains('No AI provider configured')) {
+        errorMessage = 'Please configure an API key in settings to generate questions';
+      } else if (e.toString().contains('Invalid API key')) {
+        errorMessage = 'Invalid API key. Please check your settings';
+      } else if (e.toString().contains('Rate limit')) {
+        errorMessage = 'Rate limit exceeded. Please try again in a moment';
+      } else if (e.toString().contains('timeout') || e.toString().contains('connection')) {
+        errorMessage = 'Connection error. Please check your internet connection';
+      }
+      
+      // Show error to user but don't throw - use fallback instead
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppColors.warning,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Settings',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+              },
+            ),
+          ),
+        );
+      }
+      
+      // Create fallback problem
+      final fallbackProblem = Problem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        subject: subject,
+        question: _getFallbackQuestionForSubject(subject),
+        solution: _getSolutionForCurrentProblem(),
+      );
+      
+      setState(() {
+        _currentProblem = fallbackProblem;
+        _isLoadingQuestion = false;
+      });
+    }
+  }
+
+  String _getFallbackQuestionForSubject(SubjectType subject) {
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) {
+      // Fallback to English if localization is not available
+      switch (subject) {
+        case SubjectType.math:
+          return 'Solve for x: 2x + 5 = 15';
+        case SubjectType.science:
+          return 'What is the chemical formula for water?';
+        case SubjectType.history:
+          return 'In which year did World War II end?';
+        case SubjectType.geography:
+          return 'What is the capital of Australia?';
+        case SubjectType.none:
+          return 'Please select a subject.';
+      }
+    }
     switch (subject) {
       case SubjectType.math:
-        return 'Solve for x: 2x + 5 = 15';
+        return localizations.solveForX;
       case SubjectType.science:
-        return 'What is the chemical formula for water?';
+        return localizations.chemicalFormula;
       case SubjectType.history:
-        return 'In which year did World War II end?';
+        return localizations.worldWarEnd;
       case SubjectType.geography:
-        return 'What is the capital of Australia?';
+        return localizations.australiaCapital;
+      case SubjectType.none:
+        return 'Please select a subject.';
     }
   }
 
   String _getSolutionForCurrentProblem() {
     switch (_currentSubject) {
       case SubjectType.math:
-        return '2x + 5 = 15\\n2x = 15 - 5\\n2x = 10\\nx = 5';
+        return '2x + 5 = 15\n2x = 15 - 5\n2x = 10\nx = 5';
       case SubjectType.science:
         return 'H₂O - Water consists of two hydrogen atoms and one oxygen atom.';
       case SubjectType.history:
         return '1945 - World War II ended on September 2, 1945.';
       case SubjectType.geography:
         return 'Canberra - The capital of Australia is Canberra, not Sydney or Melbourne.';
+      case SubjectType.none:
+        return 'No solution available for this subject.';
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  String _getLanguageName(String languageCode) {
+    switch (languageCode) {
+      case 'hi':
+        return 'Hindi';
+      case 'bn':
+        return 'Bengali';
+      case 'te':
+        return 'Telugu';
+      case 'mr':
+        return 'Marathi';
+      case 'ta':
+        return 'Tamil';
+      case 'gu':
+        return 'Gujarati';
+      case 'kn':
+        return 'Kannada';
+      case 'ml':
+        return 'Malayalam';
+      case 'pa':
+        return 'Punjabi';
+      case 'or':
+        return 'Odia';
+      case 'as':
+        return 'Assamese';
+      case 'ur':
+        return 'Urdu';
+      default:
+        return 'English';
     }
   }
 
@@ -632,9 +860,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   right: 0,
                   child: Column(
                     children: [
-                      const Text(
-                        'Swipe to Switch Subjects',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)?.swipeToSwitch ?? 'Swipe to Switch Subjects',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.w600,
@@ -642,9 +870,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Swipe left or right to explore\\ndifferent subjects',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)?.swipeInstructions ?? 'Swipe left or right to explore\ndifferent subjects',
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 16,
                         ),
@@ -673,9 +901,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   right: 20,
                   child: TextButton(
                     onPressed: _hideTutorial,
-                    child: const Text(
-                      'Skip',
-                      style: TextStyle(
+                    child: Text(
+                      AppLocalizations.of(context)?.skip ?? 'Skip',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -715,13 +943,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildSubjectIndicators() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: SubjectType.values.map((subject) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: SubjectType.values.where((s) => s != SubjectType.none).map((subject) {
         final isActive = subject == _currentSubject;
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: isActive ? subject.color.withOpacity(0.8) : Colors.white.withOpacity(0.2),
             borderRadius: BorderRadius.circular(20),
@@ -736,14 +965,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Icon(
                 subject.icon,
                 color: isActive ? Colors.white : Colors.white70,
-                size: 16,
+                size: 14,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Text(
-                subject.displayName,
+                subject.getLocalizedName(context),
                 style: TextStyle(
                   color: isActive ? Colors.white : Colors.white70,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -753,7 +982,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }).toList(),
     );
   }
-
 }
 
 // Custom painter for math diagram
@@ -869,4 +1097,3 @@ class MathDiagramPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

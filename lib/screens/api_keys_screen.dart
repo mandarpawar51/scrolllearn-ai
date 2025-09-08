@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import '../repositories/secure_storage_repository.dart';
 import '../utils/app_colors.dart';
 import 'home_screen.dart';
@@ -21,6 +22,7 @@ class _APIKeysScreenState extends State<APIKeysScreen>
   final _openaiController = TextEditingController();
   final _geminiController = TextEditingController();
   final _anthropicController = TextEditingController();
+  final _openrouterController = TextEditingController();
 
   final _secureStorage = SecureStorageRepository();
   
@@ -28,6 +30,7 @@ class _APIKeysScreenState extends State<APIKeysScreen>
   bool _obscureOpenAI = true;
   bool _obscureGemini = true;
   bool _obscureAnthropic = true;
+  bool _obscureOpenRouter = true;
 
   @override
   void initState() {
@@ -66,26 +69,26 @@ class _APIKeysScreenState extends State<APIKeysScreen>
       final openaiKey = await _secureStorage.getOpenAIKey();
       final geminiKey = await _secureStorage.getGeminiKey();
       final anthropicKey = await _secureStorage.getAnthropicKey();
+      final openrouterKey = await _secureStorage.getOpenRouterKey();
 
       if (mounted) {
         setState(() {
           if (openaiKey != null) _openaiController.text = openaiKey;
           if (geminiKey != null) _geminiController.text = geminiKey;
           if (anthropicKey != null) _anthropicController.text = anthropicKey;
+          if (openrouterKey != null) _openrouterController.text = openrouterKey;
         });
       }
     } catch (e) {
       // Handle error silently for now
-      debugPrint('Error loading API keys: $e');
+      debugPrint('Error loading existing keys: $e');
     }
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
-    _openaiController.dispose();
-    _geminiController.dispose();
     _anthropicController.dispose();
+    _openrouterController.dispose();
     super.dispose();
   }
 
@@ -100,6 +103,9 @@ class _APIKeysScreenState extends State<APIKeysScreen>
         return key.length > 20; // Basic length check for Gemini
       case 'anthropic':
         return key.startsWith('sk-ant-') && key.length > 20;
+      case 'openrouter':
+        // OpenRouter keys can start with 'sk-or-' or just 'sk-'
+        return (key.startsWith('sk-or-') || key.startsWith('sk-')) && key.length > 20;
       default:
         return key.length > 10; // Generic validation
     }
@@ -131,34 +137,49 @@ class _APIKeysScreenState extends State<APIKeysScreen>
     });
 
     try {
+      bool hasAnyKey = false;
+      
       // Save API keys to secure storage
       if (_openaiController.text.trim().isNotEmpty) {
         await _secureStorage.setOpenAIKey(_openaiController.text.trim());
+        hasAnyKey = true;
       }
       
       if (_geminiController.text.trim().isNotEmpty) {
         await _secureStorage.setGeminiKey(_geminiController.text.trim());
+        hasAnyKey = true;
       }
       
       if (_anthropicController.text.trim().isNotEmpty) {
         await _secureStorage.setAnthropicKey(_anthropicController.text.trim());
+        hasAnyKey = true;
+      }
+      
+      if (_openrouterController.text.trim().isNotEmpty) {
+        await _secureStorage.setOpenRouterKey(_openrouterController.text.trim());
+        hasAnyKey = true;
       }
 
       HapticFeedback.lightImpact();
       
       if (mounted) {
+        String message = hasAnyKey 
+            ? 'API keys saved successfully! You can now generate AI-powered questions.'
+            : 'No API keys provided. You can add them later in settings.';
+            
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('API keys saved successfully!'),
-            backgroundColor: AppColors.success,
+            content: Text(message),
+            backgroundColor: hasAnyKey ? AppColors.success : AppColors.warning,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            duration: const Duration(seconds: 3),
           ),
         );
         
-        // Navigate to gesture tutorial screen
+        // Navigate to home screen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const HomeScreen(),
@@ -233,6 +254,8 @@ class _APIKeysScreenState extends State<APIKeysScreen>
                               SizedBox(height: isSmallScreen ? 16 : 20),
                               
                               _buildAnthropicField(context, isSmallScreen),
+                              SizedBox(height: isSmallScreen ? 16 : 20),
+                              _buildOpenRouterField(context, isSmallScreen),
                               
                               SizedBox(height: isSmallScreen ? 24 : 32),
                               
@@ -361,6 +384,21 @@ class _APIKeysScreenState extends State<APIKeysScreen>
       onToggleVisibility: () => setState(() => _obscureAnthropic = !_obscureAnthropic),
       icon: Icons.smart_toy,
       color: AppColors.success,
+      isSmallScreen: isSmallScreen,
+    );
+  }
+
+  Widget _buildOpenRouterField(BuildContext context, bool isSmallScreen) {
+    return _buildApiKeyField(
+      context: context,
+      controller: _openrouterController,
+      label: 'OpenRouter API Key',
+      hint: 'sk-or-...',
+      provider: 'openrouter',
+      obscureText: _obscureOpenRouter,
+      onToggleVisibility: () => setState(() => _obscureOpenRouter = !_obscureOpenRouter),
+      icon: Icons.router,
+      color: AppColors.primaryBlue,
       isSmallScreen: isSmallScreen,
     );
   }
@@ -510,7 +548,8 @@ class _APIKeysScreenState extends State<APIKeysScreen>
           Text(
             '• OpenAI: Visit platform.openai.com/api-keys\n'
             '• Gemini: Visit makersuite.google.com/app/apikey\n'
-            '• Anthropic: Visit console.anthropic.com/account/keys',
+            '• Anthropic: Visit console.anthropic.com/account/keys'
+            '• OpenRouter: Visit openrouter.ai/keys',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
               fontSize: 13,

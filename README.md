@@ -46,9 +46,8 @@ A gesture-based learning mobile app powered by AI that makes studying interactiv
 This app requires AI API keys to generate problems. You'll need to:
 
 1. Get API keys from one or more providers:
-   - [OpenAI](https://platform.openai.com/api-keys)
    - [Google AI (Gemini)](https://makersuite.google.com/app/apikey)
-   - [Anthropic (Claude)](https://console.anthropic.com/)
+   - openrouter
 
 2. Add your keys in the app settings (they're stored securely on your device)
 

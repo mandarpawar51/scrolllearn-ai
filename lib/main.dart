@@ -1,47 +1,88 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'repositories/secure_storage_repository.dart';
+import 'providers/ai_provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/language_provider.dart';
 import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Lock orientation to portrait mode
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   
   // Initialize Hive for local storage
   await Hive.initFlutter();
   
   // Initialize SharedPreferences
   await SharedPreferences.getInstance();
+
+  // Initialize SecureStorageRepository
+  final secureStorageRepository = SecureStorageRepository(); // Added
   
-  runApp(const ScrollLearnApp());
+  runApp(ScrollLearnApp(secureStorageRepository: secureStorageRepository)); // Modified
+}
+
+// Helper function to determine if a language is RTL
+bool _isRTLLanguage(String languageCode) {
+  const rtlLanguages = ['ur', 'ar', 'fa', 'he'];
+  return rtlLanguages.contains(languageCode);
 }
 
 class ScrollLearnApp extends StatelessWidget {
-  const ScrollLearnApp({super.key});
+  final SecureStorageRepository secureStorageRepository; // Added
+
+  const ScrollLearnApp({super.key, required this.secureStorageRepository}); // Modified
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ScrollLearn AI',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1979E6), // Blue from your design
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Inter', // Matching your design
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => AIProviderManager(secureStorageRepository)), // Added
+      ],
+      child: Consumer3<ThemeProvider, LanguageProvider, AIProviderManager>( // Modified
+        builder: (context, themeProvider, languageProvider, aiProviderManager, child) { // Modified
+          return MaterialApp(
+            title: 'ScrollLearn AI',
+            debugShowCheckedModeBanner: false,
+            theme: themeProvider.lightTheme,
+            darkTheme: themeProvider.darkTheme,
+            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            locale: languageProvider.currentLocale,
+            supportedLocales: LanguageProvider.supportedLanguages
+                .map((lang) => LanguageProvider.getLocaleFromCode(lang['code']!))
+                .toList(),
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            // Handle RTL languages properly
+            builder: (context, child) {
+              final locale = Localizations.localeOf(context);
+              final isRTL = _isRTLLanguage(locale.languageCode);
+              
+              return Directionality(
+                textDirection: isRTL ? TextDirection.rtl : TextDirection.ltr,
+                child: child!,
+              );
+            },
+            home: const OnboardingScreen(),
+          );
+        },
       ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1979E6),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Inter',
-      ),
-      themeMode: ThemeMode.system,
-      home: const OnboardingScreen(),
     );
   }
 }

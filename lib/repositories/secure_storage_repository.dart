@@ -19,6 +19,7 @@ class SecureStorageRepository {
   static const String _openaiKeyKey = 'openai_api_key';
   static const String _geminiKeyKey = 'gemini_api_key';
   static const String _anthropicKeyKey = 'anthropic_api_key';
+  static const String _openrouterKeyKey = 'openrouter_api_key';
 
   // Store API keys
   Future<void> setOpenAIKey(String key) async {
@@ -37,6 +38,12 @@ class SecureStorageRepository {
     // TODO: Use secure storage when properly configured
     // await _storage.write(key: _anthropicKeyKey, value: key);
     _mockStorage[_anthropicKeyKey] = key;
+  }
+
+  Future<void> setOpenRouterKey(String key) async {
+    // TODO: Use secure storage when properly configured
+    // await _storage.write(key: _openrouterKeyKey, value: key);
+    _mockStorage[_openrouterKeyKey] = key;
   }
 
   // Retrieve API keys
@@ -58,13 +65,20 @@ class SecureStorageRepository {
     return _mockStorage[_anthropicKeyKey];
   }
 
+  Future<String?> getOpenRouterKey() async {
+    // TODO: Use secure storage when properly configured
+    // return await _storage.read(key: _openrouterKeyKey);
+    return _mockStorage[_openrouterKeyKey];
+  }
+
   // Check if any API key is set
   Future<bool> hasAnyApiKey() async {
     final openai = await getOpenAIKey();
     final gemini = await getGeminiKey();
     final anthropic = await getAnthropicKey();
+    final openrouter = await getOpenRouterKey();
     
-    return openai != null || gemini != null || anthropic != null;
+    return openai != null || gemini != null || anthropic != null || openrouter != null;
   }
 
   // Clear all API keys
@@ -73,6 +87,7 @@ class SecureStorageRepository {
     // await _storage.delete(key: _openaiKeyKey);
     // await _storage.delete(key: _geminiKeyKey);
     // await _storage.delete(key: _anthropicKeyKey);
+    // await _storage.delete(key: _openrouterKeyKey);
     _mockStorage.clear();
   }
 
@@ -87,6 +102,8 @@ class SecureStorageRepository {
         return key.length > 20; // Basic length check for Gemini
       case 'anthropic':
         return key.startsWith('sk-ant-') && key.length > 20;
+      case 'openrouter':
+        return key.startsWith('sk-') && key.length > 20; // OpenRouter keys often start with sk-
       default:
         return key.length > 10; // Generic validation
     }
