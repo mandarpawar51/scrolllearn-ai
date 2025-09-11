@@ -111,7 +111,9 @@ class OpenRouterService {
         Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
         
       default:
-        return '${languageInstruction}Generate a short educational question about ${subject.displayName} for a college student.';
+        return '''${languageInstruction}Generate a short educational question about ${subject.displayName} for a college student.
+        Keep it concise and clear. Focus on key concepts and practical applications.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
     }
   }
 

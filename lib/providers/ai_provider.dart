@@ -171,15 +171,25 @@ class AIProviderManager extends ChangeNotifier {
     
     switch (subject.id) {
       case 'math':
-        return '${languageInstruction}Generate a short mathematics problem suitable for a college student. Include clear problem statement and make it solvable.';
+        return '''${languageInstruction}Generate a concise mathematics problem for a college student. 
+        Choose from calculus, algebra, or geometry. Keep it short and focused.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
       case 'science':
-        return '${languageInstruction}Generate a short science problem suitable for a college student. Focus on physics, chemistry, or biology concepts.';
+        return '''${languageInstruction}Generate a short science question for a college student.
+        Choose from physics, chemistry, or biology. Keep it concise and clear.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
       case 'history':
-        return '${languageInstruction}Generate a brief history question suitable for a college student about significant historical events or processes.';
+        return '''${languageInstruction}Generate a brief history question for a college student.
+        Focus on significant events or figures. Keep it short and engaging.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
       case 'geography':
-        return '${languageInstruction}Generate a short geography question suitable for a college student about physical or human geography concepts.';
+        return '''${languageInstruction}Generate a short geography question for a college student.
+        Focus on countries, capitals, or geographic features. Keep it concise.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
       default:
-        return '${languageInstruction}Generate a general educational question about ${subject.displayName} suitable for a college student.';
+        return '''${languageInstruction}Generate a short educational question about ${subject.displayName} for a college student.
+        Keep it concise and clear. Focus on key concepts and practical applications.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
     }
   }
 

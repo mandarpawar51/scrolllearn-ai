@@ -45,7 +45,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _initializeTutorialAnimations();
     _startTutorial();
+    _loadCustomSubjects();
     _loadInitialQuestion();
+  }
+
+  Future<void> _loadCustomSubjects() async {
+    await SubjectType.loadUserSubjects();
+    if (mounted) {
+      setState(() {
+        // Trigger rebuild to show custom subjects
+      });
+    }
   }
 
   Future<void> _loadInitialQuestion() async {
@@ -479,54 +489,142 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Select Subject',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).textTheme.titleLarge?.color,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ...SubjectType.allSubjects.map((subject) => ListTile(
-              leading: Icon(subject.icon, color: subject.color),
-              title: Text(
-                subject.getLocalizedName(context),
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Select Subject',
                 style: TextStyle(
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).textTheme.titleLarge?.color,
                 ),
               ),
-              onTap: () {
-                Navigator.pop(context);
-                _switchSubject(subject);
-              },
-            )),
-            ListTile(
-              leading: Icon(Icons.add, color: Theme.of(context).iconTheme.color),
-              title: Text(
-                'Add Subject',
-                style: TextStyle(
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+              const SizedBox(height: 20),
+              // Scrollable subject list
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  itemCount: SubjectType.allSubjects.length,
+                  itemBuilder: (context, index) {
+                    final subject = SubjectType.allSubjects[index];
+                    final isCustomSubject = !['math', 'science', 'history', 'geography'].contains(subject.id);
+                    
+                    return ListTile(
+                      leading: Icon(subject.icon, color: subject.color),
+                      title: Text(
+                        subject.getLocalizedName(context),
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      trailing: isCustomSubject ? IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showDeleteSubjectConfirmation(subject);
+                        },
+                      ) : null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _switchSubject(subject);
+                      },
+                    );
+                  },
                 ),
               ),
-              onTap: () {
-                Navigator.pop(context);
-                final direction = GestureDirection.values.firstWhere((d) => d.subject == _currentSubject);
-                _showAddSubjectDialog(direction);
-              },
-            ),
-          ],
+              // Fixed Add Subject button at bottom
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.add, color: Theme.of(context).iconTheme.color),
+                title: Text(
+                  'Add Subject',
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAddSubjectDialog();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _showAddSubjectDialog(GestureDirection direction) {
+  void _showDeleteSubjectConfirmation(SubjectType subject) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Delete Subject'),
+          content: Text(
+            'Are you sure you want to delete "${subject.displayName}"?\n\nThis action cannot be undone.',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await _deleteSubject(subject);
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteSubject(SubjectType subject) async {
+    // Remove from user subjects
+    await SubjectType.removeSubject(subject.id);
+    
+    // If the deleted subject was currently active, switch to math
+    if (_currentSubject.id == subject.id) {
+      setState(() {
+        _currentSubject = SubjectType.math;
+      });
+      await _getQuestionForSubject(SubjectType.math);
+    } else {
+      setState(() {
+        // Trigger rebuild to update UI
+      });
+    }
+    
+    // Show confirmation
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${subject.displayName}" has been deleted'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showAddSubjectDialog() {
     showDialog(
       context: context,
       builder: (context) {
@@ -597,7 +695,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 if (nameController.text.isNotEmpty) {
                   final newSubject = SubjectType(
                     id: nameController.text.toLowerCase().replaceAll(' ', '_'),
@@ -605,11 +703,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     icon: selectedIcon,
                     color: selectedColor,
                   );
+                  await SubjectType.addSubject(newSubject);
                   setState(() {
-                    direction.subject = newSubject;
                     _currentSubject = newSubject;
                   });
                   Navigator.of(context).pop();
+                  // Load a question for the new subject
+                  await _getQuestionForSubject(newSubject);
                 }
               },
               child: Text('Add'),
@@ -685,7 +785,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         case 'geography':
           return 'What is the capital of Australia?';
         default:
-          return 'Please select a subject.';
+          return 'What is a key concept in ${subject.displayName}?';
       }
     }
     switch (subject.id) {
@@ -698,7 +798,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       case 'geography':
         return localizations.australiaCapital;
       default:
-        return 'Please select a subject.';
+        return 'What is a key concept in ${subject.displayName}?';
     }
   }
 
@@ -713,7 +813,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       case 'geography':
         return 'Canberra - The capital of Australia is Canberra, not Sydney or Melbourne.';
       default:
-        return 'No solution available for this subject.';
+        return 'This depends on the specific concepts and principles of ${_currentSubject.displayName}.';
     }
   }
 
