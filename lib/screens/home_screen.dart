@@ -46,7 +46,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _initializeTutorialAnimations();
     _startTutorial();
     _loadCustomSubjects();
-    _loadInitialQuestion();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Load initial question after the widget tree is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialQuestion();
+    });
   }
 
   Future<void> _loadCustomSubjects() async {

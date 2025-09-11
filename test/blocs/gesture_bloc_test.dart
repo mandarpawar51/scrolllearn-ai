@@ -155,7 +155,7 @@ void main() {
       blocTest<GestureBloc, GestureBlocState>(
         'should reset to idle state',
         build: () => gestureBloc,
-        seed: () => const GestureRecognized(
+        seed: () => GestureRecognized(
           GestureResult(
             direction: GestureDirection.right,
             subject: SubjectType.history,
