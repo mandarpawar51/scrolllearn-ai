@@ -1,97 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-enum SubjectType {
-  math,
-  science,
-  history,
-  geography,
-  none;
+class SubjectType {
+  final String displayName;
+  final IconData icon;
+  final Color color;
+  final String id;
 
-  String get displayName {
-    switch (this) {
-      case SubjectType.math:
-        return 'Math';
-      case SubjectType.science:
-        return 'Science';
-      case SubjectType.history:
-        return 'History';
-      case SubjectType.geography:
-        return 'Geography';
-      case SubjectType.none:
-        return 'None';
-    }
-  }
-
-  IconData get icon {
-    switch (this) {
-      case SubjectType.math:
-        return Icons.calculate;
-      case SubjectType.science:
-        return Icons.science;
-      case SubjectType.history:
-        return Icons.history_edu;
-      case SubjectType.geography:
-        return Icons.public;
-      case SubjectType.none:
-        return Icons.help_outline;
-    }
-  }
-
-  Color get color {
-    switch (this) {
-      case SubjectType.math:
-        return const Color(0xFF4CAF50);
-      case SubjectType.science:
-        return const Color(0xFF2196F3);
-      case SubjectType.history:
-        return const Color(0xFFFF9800);
-      case SubjectType.geography:
-        return const Color(0xFF9C27B0);
-      case SubjectType.none:
-        return const Color(0xFF757575);
-    }
-  }
-
-  String get id => toString().split('.').last;
+  const SubjectType({
+    required this.id,
+    required this.displayName,
+    required this.icon,
+    required this.color,
+  });
 
   String getLocalizedName(BuildContext context) {
     final localizations = AppLocalizations.of(context);
     if (localizations == null) return displayName;
 
-    switch (this) {
-      case SubjectType.math:
+    switch (id) {
+      case 'math':
         return localizations.math;
-      case SubjectType.science:
+      case 'science':
         return localizations.science;
-      case SubjectType.history:
+      case 'history':
         return localizations.history;
-      case SubjectType.geography:
+      case 'geography':
         return localizations.geography;
-      case SubjectType.none:
+      default:
         return displayName;
     }
   }
 
-  static List<SubjectType> get allSubjects => [math, science, history, geography];
+  static final SubjectType math = SubjectType(id: 'math', displayName: 'Math', icon: Icons.calculate, color: Color(0xFF4CAF50));
+  static final SubjectType science = SubjectType(id: 'science', displayName: 'Science', icon: Icons.science, color: Color(0xFF2196F3));
+  static final SubjectType history = SubjectType(id: 'history', displayName: 'History', icon: Icons.history_edu, color: Color(0xFFFF9800));
+  static final SubjectType geography = SubjectType(id: 'geography', displayName: 'Geography', icon: Icons.public, color: Color(0xFF9C27B0));
+  static final SubjectType none = SubjectType(id: 'none', displayName: 'None', icon: Icons.help_outline, color: Color(0xFF757575));
+
+  static List<SubjectType> _userSubjects = [];
+
+  static List<SubjectType> get allSubjects => [math, science, history, geography, ..._userSubjects];
+  static List<SubjectType> get values => [math, science, history, geography, none, ..._userSubjects];
+
+  static void addSubject(SubjectType subject) {
+    _userSubjects.add(subject);
+  }
 }
 
-enum GestureDirection {
-  up,
-  down,
-  left,
-  right;
+class GestureDirection {
+  static final up = GestureDirection._('up', SubjectType.science);
+  static final down = GestureDirection._('down', SubjectType.math);
+  static final left = GestureDirection._('left', SubjectType.geography);
+  static final right = GestureDirection._('right', SubjectType.history);
 
-  SubjectType get subject {
-    switch (this) {
-      case GestureDirection.up:
-        return SubjectType.science;
-      case GestureDirection.down:
-        return SubjectType.math;
-      case GestureDirection.left:
-        return SubjectType.geography;
-      case GestureDirection.right:
-        return SubjectType.history;
-    }
-  }
+  static List<GestureDirection> get values => [up, down, left, right];
+
+  String name;
+  SubjectType subject;
+
+  GestureDirection._(this.name, this.subject);
 }

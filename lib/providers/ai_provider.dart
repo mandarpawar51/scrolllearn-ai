@@ -136,7 +136,7 @@ class AIProviderManager extends ChangeNotifier {
   }
 
   Future<String> generateSubjectQuestion(SubjectType subject, {String? model, String language = 'English'}) async {
-    debugPrint('AIProviderManager: generateSubjectQuestion called for subject: ${subject.name}, language: $language');
+    debugPrint('AIProviderManager: generateSubjectQuestion called for subject: ${subject.displayName}, language: $language');
     if (_selectedProvider == AIProvider.none) {
       debugPrint('AIProviderManager: No provider selected, attempting auto-selection...');
       final autoSelected = await _autoSelectProvider();
@@ -169,17 +169,17 @@ class AIProviderManager extends ChangeNotifier {
   String _buildSubjectPrompt(SubjectType subject, {String language = 'English'}) {
     String languageInstruction = language != 'English' ? 'Generate the question in $language language. ' : '';
     
-    switch (subject) {
-      case SubjectType.math:
+    switch (subject.id) {
+      case 'math':
         return '${languageInstruction}Generate a short mathematics problem suitable for a college student. Include clear problem statement and make it solvable.';
-      case SubjectType.science:
+      case 'science':
         return '${languageInstruction}Generate a short science problem suitable for a college student. Focus on physics, chemistry, or biology concepts.';
-      case SubjectType.history:
+      case 'history':
         return '${languageInstruction}Generate a brief history question suitable for a college student about significant historical events or processes.';
-      case SubjectType.geography:
+      case 'geography':
         return '${languageInstruction}Generate a short geography question suitable for a college student about physical or human geography concepts.';
-      case SubjectType.none:
-        return '${languageInstruction}Generate a general educational question suitable for a college student.';
+      default:
+        return '${languageInstruction}Generate a general educational question about ${subject.displayName} suitable for a college student.';
     }
   }
 
