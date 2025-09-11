@@ -8,6 +8,7 @@ import '../utils/app_colors.dart';
 import '../providers/language_provider.dart';
 
 import 'settings_screen.dart';
+import 'progress_screen.dart';
 import '../providers/ai_provider.dart';
 import '../widgets/question_skeleton_loader.dart';
 
@@ -46,7 +47,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _initializeTutorialAnimations();
     _startTutorial();
     _loadCustomSubjects();
-    _loadInitialQuestion();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Load initial question after the widget tree is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialQuestion();
+    });
   }
 
   Future<void> _loadCustomSubjects() async {
@@ -142,14 +151,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
-          child: _buildContent(),
+          child: IndexedStack(
+            index: _currentTabIndex,
+            children: [
+              _buildHomeTab(),
+              const ProgressScreen(),
+            ],
+          ),
         ),
         bottomNavigationBar: _buildBottomNavigation(),
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildHomeTab() {
     return GestureDetector(
       onPanStart: (details) {
         _hideTutorial();
@@ -427,10 +442,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: BottomNavigationBar(
         currentIndex: _currentTabIndex,
         onTap: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-          _handleBottomNavigation(index);
+          if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            ).then((_) {
+              setState(() {
+                _currentTabIndex = 0;
+              });
+            });
+          } else {
+            setState(() {
+              _currentTabIndex = index;
+            });
+          }
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? Theme.of(context).cardColor,
@@ -733,43 +758,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     });
   }
-
-  void _handleBottomNavigation(int index) {
-    switch (index) {
-      case 0:
-        // Home - already here
-        break;
-      case 1:
-        // Progress - coming soon
-        setState(() {
-          _currentTabIndex = 0; // Reset to home
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Progress tracking coming soon!'),
-            backgroundColor: AppColors.primaryBlue,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        break;
-      case 2:
-        // Settings
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const SettingsScreen(),
-          ),
-        ).then((_) {
-          // Reset to home tab when returning from settings
-          setState(() {
-            _currentTabIndex = 0;
-          });
-        });
-        break;
-    }
-  }
-
-  
 
   String _getFallbackQuestionForSubject(SubjectType subject) {
     final localizations = AppLocalizations.of(context);
