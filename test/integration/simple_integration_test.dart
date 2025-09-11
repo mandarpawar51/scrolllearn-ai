@@ -32,7 +32,7 @@ void main() {
 
       // Verify basic UI structure
       expect(find.byType(MaterialApp), findsOneWidget);
-      expect(find.byType(Scaffold), findsAtLeastOneWidget);
+      expect(find.byType(Scaffold), findsWidgets);
       
       print('✅ Basic UI elements present');
     });

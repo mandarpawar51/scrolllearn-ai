@@ -20,7 +20,7 @@ void main() {
       expect(find.byType(MaterialApp), findsOneWidget);
       
       // Should show some content (onboarding or main screen)
-      expect(find.byType(Scaffold), findsAtLeastOneWidget);
+      expect(find.byType(Scaffold), findsWidgets);
       
       print('✅ App launched successfully on device');
     });

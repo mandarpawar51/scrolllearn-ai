@@ -29,7 +29,7 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 3));
       
       // Verify there's at least a Scaffold (basic screen structure)
-      expect(find.byType(Scaffold), findsAtLeastOneWidget);
+      expect(find.byType(Scaffold), findsWidgets);
       
       print('✅ App displays basic UI structure');
     });

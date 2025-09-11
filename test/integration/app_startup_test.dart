@@ -129,7 +129,7 @@ void main() {
 
       for (final element in basicElements) {
         if (element.evaluate().isNotEmpty) {
-          expect(element, findsAtLeastOneWidget);
+          expect(element, findsWidgets);
         }
       }
 

@@ -39,7 +39,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Look for language section
-      expect(find.text('Language'), findsAtLeastOneWidget);
+      expect(find.text('Language'), findsWidgets);
       
       // Check if language selection is available
       final languageSection = find.text('Language');

@@ -38,7 +38,7 @@ class LanguageDebugHelper {
       print('🧪 Testing all supported languages...');
       
       for (final language in LanguageProvider.supportedLanguages) {
-        await testLanguageSwitch(provider, language['code']!);
+        testLanguageSwitch(provider, language['code']!);
         
         // Small delay to avoid overwhelming the system
         await Future.delayed(const Duration(milliseconds: 100));

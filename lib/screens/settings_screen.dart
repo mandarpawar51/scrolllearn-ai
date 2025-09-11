@@ -124,32 +124,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final languageProvider = Provider.of<LanguageProvider>(context);
-    
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: _buildAppBar(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            _buildAccountSection(),
-            const SizedBox(height: 32),
-            _buildPreferencesSection(themeProvider, languageProvider),
-            const SizedBox(height: 32),
-            _buildApiKeysSection(),
-            const SizedBox(height: 32),
-            _buildNotificationsSection(),
-            const SizedBox(height: 32),
-            _buildSupportSection(),
-            const SizedBox(height: 120),
-          ],
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNavigation(),
+    return Consumer2<ThemeProvider, LanguageProvider>(
+      builder: (context, themeProvider, languageProvider, child) {
+        return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          appBar: _buildAppBar(),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                _buildAccountSection(),
+                const SizedBox(height: 32),
+                _buildPreferencesSection(themeProvider, languageProvider),
+                const SizedBox(height: 32),
+                _buildApiKeysSection(),
+                const SizedBox(height: 32),
+                _buildNotificationsSection(),
+                const SizedBox(height: 32),
+                _buildSupportSection(),
+                const SizedBox(height: 120),
+              ],
+            ),
+          ),
+          bottomNavigationBar: _buildBottomNavigation(),
+        );
+      },
     );
   }
 
@@ -167,10 +168,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           size: 24,
         ),
       ),
-      title: Text(
-        AppLocalizations.of(context)?.settings ?? 'Settings',
+      title: const Text(
+        'Settings',
         style: TextStyle(
-          color: Theme.of(context).appBarTheme.foregroundColor,
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
@@ -184,11 +184,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          AppLocalizations.of(context)?.account ?? 'Account',
-          style: TextStyle(
+          'Account',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
@@ -225,11 +224,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          AppLocalizations.of(context)?.preferences ?? 'Preferences',
-          style: TextStyle(
+          'Preferences',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
@@ -242,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Directionality.of(context) == TextDirection.rtl 
                 ? Icons.chevron_left 
                 : Icons.chevron_right,
-            color: AppColors.textSecondary,
+            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
             size: 20,
           ),
         ),
@@ -250,11 +248,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: Icons.dark_mode_outlined,
           title: AppLocalizations.of(context)?.darkMode ?? 'Dark Mode',
           subtitle: AppLocalizations.of(context)?.darkModeDescription ?? 'Enable dark mode for a\ncomfortable viewing experience',
-          trailing: Switch(
+          trailing: Switch.adaptive(
             value: themeProvider.isDarkMode,
-            onChanged: (value) {
-              themeProvider.toggleTheme();
-            },
+            onChanged: (_) => themeProvider.toggleTheme(),
             activeColor: AppColors.primaryBlue,
           ),
         ),
@@ -267,11 +263,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          AppLocalizations.of(context)?.apiConfiguration ?? 'API Configuration',
-          style: TextStyle(
+          'API Configuration',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
@@ -295,9 +290,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    AppLocalizations.of(context)?.aiProviderKeys ?? 'AI Provider Keys',
-                    style: const TextStyle(
+                  const Text(
+                    'AI Provider Keys',
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primaryBlue,
@@ -306,9 +301,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                AppLocalizations.of(context)?.apiKeysDescription ?? 'Configure your API keys to enable AI-powered learning features',
-                style: const TextStyle(
+              const Text(
+                'Configure your API keys to enable AI-powered learning features',
+                style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
@@ -333,10 +328,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 }).toList(),
                 onChanged: (AIProvider? newValue) {
                   if (newValue != null) {
-                    setState(() {
-                      _selectedAIProvider = newValue;
-                    });
-                    Provider.of<AIProviderManager>(context, listen: false).setSelectedProvider(newValue);
+                    _selectedAIProvider = newValue;
+                    setState(() {});
+                    context.read<AIProviderManager>().setSelectedProvider(newValue);
                   }
                 },
               ),
@@ -410,9 +404,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
-                : Text(
-                    AppLocalizations.of(context)?.saveApiKeys ?? 'Save API Keys',
-                    style: const TextStyle(
+                : const Text(
+                    'Save API Keys',
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -428,11 +422,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          AppLocalizations.of(context)?.notifications ?? 'Notifications',
-          style: TextStyle(
+          'Notifications',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
@@ -440,12 +433,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: Icons.notifications_outlined,
           title: AppLocalizations.of(context)?.appNotifications ?? 'App Notifications',
           subtitle: AppLocalizations.of(context)?.appNotificationsDescription ?? 'Receive notifications for new\ncontent and updates',
-          trailing: Switch(
+          trailing: Switch.adaptive(
             value: _appNotifications,
             onChanged: (value) {
-              setState(() {
-                _appNotifications = value;
-              });
+              _appNotifications = value;
+              setState(() {});
             },
             activeColor: AppColors.primaryBlue,
           ),
@@ -454,12 +446,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: Icons.email_outlined,
           title: AppLocalizations.of(context)?.emailNotifications ?? 'Email Notifications',
           subtitle: AppLocalizations.of(context)?.emailNotificationsDescription ?? 'Get email notifications for\nimportant updates',
-          trailing: Switch(
+          trailing: Switch.adaptive(
             value: _emailNotifications,
             onChanged: (value) {
-              setState(() {
-                _emailNotifications = value;
-              });
+              _emailNotifications = value;
+              setState(() {});
             },
             activeColor: AppColors.primaryBlue,
           ),
@@ -473,11 +464,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          AppLocalizations.of(context)?.support ?? 'Support',
-          style: TextStyle(
+          'Support',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).textTheme.titleLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
@@ -490,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Directionality.of(context) == TextDirection.rtl 
                 ? Icons.chevron_left 
                 : Icons.chevron_right,
-            color: AppColors.textSecondary,
+            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
             size: 20,
           ),
         ),
@@ -503,7 +493,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Directionality.of(context) == TextDirection.rtl 
                 ? Icons.chevron_left 
                 : Icons.chevron_right,
-            color: AppColors.textSecondary,
+            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
             size: 20,
           ),
         ),
@@ -583,60 +573,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Row(
           children: [
             if (showAvatar)
-              CircleAvatar(
+              const CircleAvatar(
                 radius: 22,
-                backgroundColor: Colors.orange.withOpacity(0.2),
-                // backgroundImage: const AssetImage('assets/images/profile_placeholder.png'), // You can add a placeholder image
-                child: const Icon(
+                backgroundColor: Color(0x33FF9800),
+                child: Icon(
                   Icons.person,
                   color: Colors.orange,
                   size: 24,
                 ),
               )
             else
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark 
-                      ? Colors.grey[800] 
-                      : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
-                  size: 20,
-                ),
-              ),
+              _buildSettingsIcon(icon),
             const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).textTheme.titleMedium?.color,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
+              child: _buildSettingsText(title, subtitle),
             ),
             if (trailing != null) trailing,
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSettingsIcon(IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark 
+            ? Colors.grey[800] 
+            : Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        icon,
+        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+        size: 20,
+      ),
+    );
+  }
+
+  Widget _buildSettingsText(String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SettingsTitle(title: title),
+        const SizedBox(height: 4),
+        _SettingsSubtitle(subtitle: subtitle),
+      ],
     );
   }
 
@@ -654,10 +637,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
             if (controller.text.isNotEmpty)
@@ -678,8 +661,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           obscureText: obscureText,
           decoration: InputDecoration(
             hintText: 'Paste your $label here',
-            hintStyle: const TextStyle(
-              color: AppColors.textLight,
+            hintStyle: TextStyle(
+              color: Theme.of(context).hintColor,
               fontSize: 14,
             ),
             border: OutlineInputBorder(
@@ -719,9 +702,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).textTheme.bodyLarge?.color,
           ),
           onChanged: (value) {
             setState(() {}); // Refresh to show/hide delete button
@@ -867,6 +850,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
       SnackBar(
         content: Text('$featureName is coming soon!'),
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+}
+
+class _SettingsTitle extends StatelessWidget {
+  final String title;
+  
+  const _SettingsTitle({required this.title});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+}
+
+class _SettingsSubtitle extends StatelessWidget {
+  final String subtitle;
+  
+  const _SettingsSubtitle({required this.subtitle});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      subtitle,
+      style: TextStyle(
+        fontSize: 13,
+        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+        height: 1.3,
       ),
     );
   }
