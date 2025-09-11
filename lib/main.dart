@@ -51,8 +51,8 @@ class ScrollLearnApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AIProviderManager(secureStorageRepository)), // Added
       ],
-      child: Consumer3<ThemeProvider, LanguageProvider, AIProviderManager>( // Modified
-        builder: (context, themeProvider, languageProvider, aiProviderManager, child) { // Modified
+      child: Consumer2<ThemeProvider, LanguageProvider>(
+        builder: (context, themeProvider, languageProvider, child) {
           return MaterialApp(
             title: 'ScrollLearn AI',
             debugShowCheckedModeBanner: false,

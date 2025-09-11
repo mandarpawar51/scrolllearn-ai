@@ -89,6 +89,7 @@ class GestureInvalid extends GestureBlocState {
 // BLoC
 class GestureBloc extends Bloc<GestureEvent, GestureBlocState> {
   Offset? _startPosition;
+  Offset? _currentPosition;
   Timer? _debounceTimer;
 
   GestureBloc() : super(const GestureIdle()) {
@@ -106,6 +107,7 @@ class GestureBloc extends Bloc<GestureEvent, GestureBlocState> {
   void _onPanUpdate(GesturePanUpdate event, Emitter<GestureBlocState> emit) {
     if (_startPosition == null) return;
 
+    _currentPosition = event.position;
     final delta = event.position - _startPosition!;
     final distance = delta.distance;
     final angle = _calculateAngle(delta);
@@ -124,22 +126,26 @@ class GestureBloc extends Bloc<GestureEvent, GestureBlocState> {
   }
 
   void _onPanEnd(GesturePanEnd event, Emitter<GestureBlocState> emit) {
-    if (_startPosition == null || state is! GestureDetecting) {
+    if (_startPosition == null || _currentPosition == null) {
       emit(const GestureIdle());
       return;
     }
 
-    final detectingState = state as GestureDetecting;
-    final gestureData = detectingState.gestureData;
+    // Calculate final gesture data from start to current position
+    final delta = _currentPosition! - _startPosition!;
+    final distance = delta.distance;
+    final detectedDirection = _detectDirection(delta, distance);
 
     // Check if gesture meets minimum requirements
-    if (gestureData.distance < AppConstants.minSwipeDistance) {
+    if (distance < AppConstants.minSwipeDistance) {
+      print('Gesture too short: ${distance.toStringAsFixed(1)}px < ${AppConstants.minSwipeDistance}px');
       emit(const GestureInvalid('Swipe distance too short'));
       _startDebounceTimer();
       return;
     }
 
-    if (gestureData.detectedDirection == null) {
+    if (detectedDirection == null) {
+      print('Gesture direction unclear');
       emit(const GestureInvalid('Gesture direction unclear'));
       _startDebounceTimer();
       return;
@@ -149,18 +155,20 @@ class GestureBloc extends Bloc<GestureEvent, GestureBlocState> {
     final velocity = event.velocity.distance;
 
     final result = GestureResult(
-      direction: gestureData.detectedDirection!,
-      subject: gestureData.detectedDirection!.subject,
+      direction: detectedDirection,
+      subject: detectedDirection.subject,
       velocity: velocity,
-      distance: gestureData.distance,
+      distance: distance,
     );
 
+    print('Gesture recognized: $detectedDirection -> ${detectedDirection.subject}');
     emit(GestureRecognized(result));
     _startDebounceTimer();
   }
 
   void _onReset(GestureReset event, Emitter<GestureBlocState> emit) {
     _startPosition = null;
+    _currentPosition = null;
     _cancelDebounceTimer();
     emit(const GestureIdle());
   }
@@ -170,26 +178,21 @@ class GestureBloc extends Bloc<GestureEvent, GestureBlocState> {
   }
 
   GestureDirection? _detectDirection(Offset delta, double distance) {
-    if (distance < AppConstants.minSwipeDistance * 0.5) {
+    if (distance < AppConstants.minSwipeDistance * 0.3) {
       return null; // Too short to determine direction
     }
 
-    final angle = _calculateAngle(delta);
-    final absAngle = angle.abs();
-
-    // Vertical gestures (up/down)
-    if (absAngle > 90 - AppConstants.maxSwipeAngle && 
-        absAngle < 90 + AppConstants.maxSwipeAngle) {
-      return angle > 0 ? GestureDirection.down : GestureDirection.up;
+    final absX = delta.dx.abs();
+    final absY = delta.dy.abs();
+    
+    // Use simple comparison instead of angle calculation for better performance
+    if (absY > absX) {
+      // Vertical gesture
+      return delta.dy > 0 ? GestureDirection.down : GestureDirection.up;
+    } else {
+      // Horizontal gesture
+      return delta.dx > 0 ? GestureDirection.right : GestureDirection.left;
     }
-
-    // Horizontal gestures (left/right)
-    if (absAngle < AppConstants.maxSwipeAngle || 
-        absAngle > 180 - AppConstants.maxSwipeAngle) {
-      return angle > 0 ? GestureDirection.right : GestureDirection.left;
-    }
-
-    return null; // Diagonal gesture, not recognized
   }
 
   void _startDebounceTimer() {

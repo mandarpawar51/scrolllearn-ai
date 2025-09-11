@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Added for LogicalKeyboardKey
+import 'package:flutter/semantics.dart'; // Added for SemanticsFlag
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:provider/provider.dart';
@@ -119,7 +121,7 @@ void main() {
       if (visibilityToggle.evaluate().isNotEmpty) {
         await tester.tap(visibilityToggle.first);
         await tester.pumpAndSettle();
-        expect(find.byIcon(Icons.visibility_off), findsAtLeastOneWidget);
+        expect(find.byIcon(Icons.visibility_off), findsWidgets);
         print('✅ Password visibility toggle works');
       }
 
@@ -204,7 +206,7 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
       
       expect(find.byType(SettingsScreen), findsOneWidget);
-      expect(find.text('Settings'), findsAtLeastOneWidget);
+      expect(find.text('Settings'), findsWidgets);
       print('✅ Navigation to settings successful');
 
       // Test theme toggle

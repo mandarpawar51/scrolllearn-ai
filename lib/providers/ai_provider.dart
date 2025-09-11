@@ -44,31 +44,41 @@ class AIProviderManager extends ChangeNotifier {
   }
 
   Future<AIProvider> _autoSelectProvider() async {
+    debugPrint('AIProviderManager: Attempting to auto-select provider...');
     // Check for available API keys and auto-select the first available provider
     final openRouterKey = await _secureStorageRepository.getOpenRouterKey();
+    debugPrint('AIProviderManager: OpenRouter Key: ${openRouterKey != null && openRouterKey.isNotEmpty ? 'Found' : 'Not Found'}');
     if (openRouterKey != null && openRouterKey.isNotEmpty) {
       await setSelectedProvider(AIProvider.openrouter);
+      debugPrint('AIProviderManager: Auto-selected OpenRouter.');
       return AIProvider.openrouter;
     }
 
     final openAIKey = await _secureStorageRepository.getOpenAIKey();
+    debugPrint('AIProviderManager: OpenAI Key: ${openAIKey != null && openAIKey.isNotEmpty ? 'Found' : 'Not Found'}');
     if (openAIKey != null && openAIKey.isNotEmpty) {
       await setSelectedProvider(AIProvider.openai);
+      debugPrint('AIProviderManager: Auto-selected OpenAI.');
       return AIProvider.openai;
     }
 
     final geminiKey = await _secureStorageRepository.getGeminiKey();
+    debugPrint('AIProviderManager: Gemini Key: ${geminiKey != null && geminiKey.isNotEmpty ? 'Found' : 'Not Found'}');
     if (geminiKey != null && geminiKey.isNotEmpty) {
       await setSelectedProvider(AIProvider.gemini);
+      debugPrint('AIProviderManager: Auto-selected Gemini.');
       return AIProvider.gemini;
     }
 
     final anthropicKey = await _secureStorageRepository.getAnthropicKey();
+    debugPrint('AIProviderManager: Anthropic Key: ${anthropicKey != null && anthropicKey.isNotEmpty ? 'Found' : 'Not Found'}');
     if (anthropicKey != null && anthropicKey.isNotEmpty) {
       await setSelectedProvider(AIProvider.anthropic);
+      debugPrint('AIProviderManager: Auto-selected Anthropic.');
       return AIProvider.anthropic;
     }
 
+    debugPrint('AIProviderManager: No AI provider found with configured API key.');
     return AIProvider.none;
   }
 
@@ -126,25 +136,32 @@ class AIProviderManager extends ChangeNotifier {
   }
 
   Future<String> generateSubjectQuestion(SubjectType subject, {String? model, String language = 'English'}) async {
+    debugPrint('AIProviderManager: generateSubjectQuestion called for subject: ${subject.name}, language: $language');
     if (_selectedProvider == AIProvider.none) {
+      debugPrint('AIProviderManager: No provider selected, attempting auto-selection...');
       final autoSelected = await _autoSelectProvider();
       if (autoSelected == AIProvider.none) {
+        debugPrint('AIProviderManager: Auto-selection failed. No AI provider configured.');
         throw Exception('No AI provider configured. Please add an API key in settings.');
       }
     }
+    debugPrint('AIProviderManager: Using selected provider: ${_selectedProvider.name}');
 
     switch (_selectedProvider) {
       case AIProvider.openrouter:
         final openRouterService = OpenRouterService(_secureStorageRepository);
+        debugPrint('AIProviderManager: Calling OpenRouterService.generateSubjectQuestion...');
         return await openRouterService.generateSubjectQuestion(subject, model: model, language: language);
         
       case AIProvider.gemini:
         final geminiService = GeminiService(_secureStorageRepository);
+        debugPrint('AIProviderManager: Calling GeminiService.generateSubjectQuestion...');
         return await geminiService.generateSubjectQuestion(subject, model: model, language: language);
         
       default:
         // For other providers, use the generic prompt method
         String prompt = _buildSubjectPrompt(subject, language: language);
+        debugPrint('AIProviderManager: Building generic prompt: $prompt');
         return await generateQuestion(prompt, model: model);
     }
   }
