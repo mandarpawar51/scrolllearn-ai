@@ -1,59 +1,97 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-class SubjectType {
-  final String displayName;
-  final IconData icon;
-  final Color color;
-  final String id;
+enum SubjectType {
+  math,
+  science,
+  history,
+  geography,
+  none;
 
-  const SubjectType({
-    required this.id,
-    required this.displayName,
-    required this.icon,
-    required this.color,
-  });
+  String get displayName {
+    switch (this) {
+      case SubjectType.math:
+        return 'Math';
+      case SubjectType.science:
+        return 'Science';
+      case SubjectType.history:
+        return 'History';
+      case SubjectType.geography:
+        return 'Geography';
+      case SubjectType.none:
+        return 'None';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case SubjectType.math:
+        return Icons.calculate;
+      case SubjectType.science:
+        return Icons.science;
+      case SubjectType.history:
+        return Icons.history_edu;
+      case SubjectType.geography:
+        return Icons.public;
+      case SubjectType.none:
+        return Icons.help_outline;
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case SubjectType.math:
+        return const Color(0xFF4CAF50);
+      case SubjectType.science:
+        return const Color(0xFF2196F3);
+      case SubjectType.history:
+        return const Color(0xFFFF9800);
+      case SubjectType.geography:
+        return const Color(0xFF9C27B0);
+      case SubjectType.none:
+        return const Color(0xFF757575);
+    }
+  }
+
+  String get id => toString().split('.').last;
 
   String getLocalizedName(BuildContext context) {
     final localizations = AppLocalizations.of(context);
     if (localizations == null) return displayName;
 
-    switch (id) {
-      case 'math':
+    switch (this) {
+      case SubjectType.math:
         return localizations.math;
-      case 'science':
+      case SubjectType.science:
         return localizations.science;
-      case 'history':
+      case SubjectType.history:
         return localizations.history;
-      case 'geography':
+      case SubjectType.geography:
         return localizations.geography;
-      default:
+      case SubjectType.none:
         return displayName;
     }
   }
 
-  static final SubjectType math = SubjectType(id: 'math', displayName: 'Math', icon: Icons.calculate, color: Color(0xFF4CAF50));
-  static final SubjectType science = SubjectType(id: 'science', displayName: 'Science', icon: Icons.science, color: Color(0xFF2196F3));
-  static final SubjectType history = SubjectType(id: 'history', displayName: 'History', icon: Icons.history_edu, color: Color(0xFFFF9800));
-  static final SubjectType geography = SubjectType(id: 'geography', displayName: 'Geography', icon: Icons.public, color: Color(0xFF9C27B0));
-  static final SubjectType none = SubjectType(id: 'none', displayName: 'None', icon: Icons.help_outline, color: Color(0xFF757575));
-
-  static List<SubjectType> _userSubjects = [];
-
-  static List<SubjectType> get allSubjects => [math, science, history, geography, ..._userSubjects];
-  static List<SubjectType> get values => [math, science, history, geography, none, ..._userSubjects];
-
-  static void addSubject(SubjectType subject) {
-    _userSubjects.add(subject);
-  }
+  static List<SubjectType> get allSubjects => [math, science, history, geography];
 }
 
 enum GestureDirection {
-  up(SubjectType.science),
-  down(SubjectType.math),
-  left(SubjectType.geography),
-  right(SubjectType.history);
+  up,
+  down,
+  left,
+  right;
 
-  const GestureDirection(this.subject);
-  final SubjectType subject;
+  SubjectType get subject {
+    switch (this) {
+      case GestureDirection.up:
+        return SubjectType.science;
+      case GestureDirection.down:
+        return SubjectType.math;
+      case GestureDirection.left:
+        return SubjectType.geography;
+      case GestureDirection.right:
+        return SubjectType.history;
+    }
+  }
 }

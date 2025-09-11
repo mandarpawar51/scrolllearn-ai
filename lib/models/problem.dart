@@ -88,7 +88,7 @@ class Problem {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'subject': subject.name,
+      'subject': subject.id,
       'question': question,
       'solution': solution,
       'explanation': explanation,
@@ -104,7 +104,7 @@ class Problem {
     return Problem(
       id: json['id'],
       subject: SubjectType.values.firstWhere(
-        (e) => e.name == json['subject'],
+        (e) => e.id == json['subject'],
         orElse: () => SubjectType.none,
       ),
       question: json['question'],

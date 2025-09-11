@@ -528,96 +528,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _showAddSubjectDialog() {
     showDialog(
       context: context,
-      builder: (context) {
-        final TextEditingController nameController = TextEditingController();
-        Color selectedColor = Colors.blue;
-        IconData selectedIcon = Icons.class_;
-
-        return AlertDialog(
-          title: Text('Add New Subject'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(labelText: 'Subject Name'),
-                    ),
-                    SizedBox(height: 20),
-                    Text('Select a color'),
-                    Wrap(
-                      spacing: 10,
-                      children: [
-                        for (var color in [Colors.blue, Colors.red, Colors.green, Colors.orange, Colors.purple])
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                selectedColor = color;
-                              });
-                            },
-                            child: CircleAvatar(
-                              backgroundColor: color,
-                              child: selectedColor == color ? Icon(Icons.check, color: Colors.white) : null,
-                            ),
-                          )
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    Text('Select an icon'),
-                    Wrap(
-                      spacing: 10,
-                      children: [
-                        for (var icon in [Icons.class_, Icons.book, Icons.translate, Icons.computer, Icons.code])
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                selectedIcon = icon;
-                              });
-                            },
-                            child: CircleAvatar(
-                              backgroundColor: selectedIcon == icon ? Colors.blue.withOpacity(0.3) : Colors.transparent,
-                              child: Icon(icon, color: selectedIcon == icon ? Colors.blue : Colors.grey),
-                            ),
-                          )
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
+      builder: (context) => AlertDialog(
+        title: Text('Coming Soon!'),
+        content: Text('Custom subjects will be available in a future update.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty) {
-                  final newSubject = SubjectType(
-                    id: nameController.text.toLowerCase().replaceAll(' ', '_'),
-                    displayName: nameController.text,
-                    icon: selectedIcon,
-                    color: selectedColor,
-                  );
-                  SubjectType.addSubject(newSubject);
-                  setState(() {});
-                  Navigator.of(context).pop();
-                }
-              },
-              child: Text('Add'),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 
-    void _showSolutionAction() {
+  void _showSolutionAction() {
     setState(() {
       _showSolution = !_showSolution;
       if (_showSolution) { // If showing solution, populate answer box
