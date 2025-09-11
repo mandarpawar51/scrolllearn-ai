@@ -136,7 +136,7 @@ class AIProviderManager extends ChangeNotifier {
   }
 
   Future<String> generateSubjectQuestion(SubjectType subject, {String? model, String language = 'English'}) async {
-    debugPrint('AIProviderManager: generateSubjectQuestion called for subject: ${subject.name}, language: $language');
+    debugPrint('AIProviderManager: generateSubjectQuestion called for subject: ${subject.displayName}, language: $language');
     if (_selectedProvider == AIProvider.none) {
       debugPrint('AIProviderManager: No provider selected, attempting auto-selection...');
       final autoSelected = await _autoSelectProvider();
@@ -169,17 +169,27 @@ class AIProviderManager extends ChangeNotifier {
   String _buildSubjectPrompt(SubjectType subject, {String language = 'English'}) {
     String languageInstruction = language != 'English' ? 'Generate the question in $language language. ' : '';
     
-    switch (subject) {
-      case SubjectType.math:
-        return '${languageInstruction}Generate a short mathematics problem suitable for a college student. Include clear problem statement and make it solvable.';
-      case SubjectType.science:
-        return '${languageInstruction}Generate a short science problem suitable for a college student. Focus on physics, chemistry, or biology concepts.';
-      case SubjectType.history:
-        return '${languageInstruction}Generate a brief history question suitable for a college student about significant historical events or processes.';
-      case SubjectType.geography:
-        return '${languageInstruction}Generate a short geography question suitable for a college student about physical or human geography concepts.';
-      case SubjectType.none:
-        return '${languageInstruction}Generate a general educational question suitable for a college student.';
+    switch (subject.id) {
+      case 'math':
+        return '''${languageInstruction}Generate a concise mathematics problem for a college student. 
+        Choose from calculus, algebra, or geometry. Keep it short and focused.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
+      case 'science':
+        return '''${languageInstruction}Generate a short science question for a college student.
+        Choose from physics, chemistry, or biology. Keep it concise and clear.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
+      case 'history':
+        return '''${languageInstruction}Generate a brief history question for a college student.
+        Focus on significant events or figures. Keep it short and engaging.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
+      case 'geography':
+        return '''${languageInstruction}Generate a short geography question for a college student.
+        Focus on countries, capitals, or geographic features. Keep it concise.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
+      default:
+        return '''${languageInstruction}Generate a short educational question about ${subject.displayName} for a college student.
+        Keep it concise and clear. Focus on key concepts and practical applications.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
     }
   }
 

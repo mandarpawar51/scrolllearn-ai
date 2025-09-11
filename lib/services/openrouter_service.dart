@@ -89,29 +89,31 @@ class OpenRouterService {
   String _buildSubjectPrompt(SubjectType subject, {String language = 'English'}) {
     String languageInstruction = language != 'English' ? 'Generate the question in $language language. ' : '';
     
-    switch (subject) {
-      case SubjectType.math:
+    switch (subject.id) {
+      case 'math':
         return '''${languageInstruction}Generate a concise mathematics problem for a college student. 
         Choose from calculus, algebra, or geometry. Keep it short and focused.
         Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
         
-      case SubjectType.science:
+      case 'science':
         return '''${languageInstruction}Generate a short science question for a college student.
         Choose from physics, chemistry, or biology. Keep it concise and clear.
         Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
         
-      case SubjectType.history:
+      case 'history':
         return '''${languageInstruction}Generate a brief history question for a college student.
         Focus on significant events or figures. Keep it short and engaging.
         Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
         
-      case SubjectType.geography:
+      case 'geography':
         return '''${languageInstruction}Generate a short geography question for a college student.
         Focus on countries, capitals, or geographic features. Keep it concise.
         Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
         
-      case SubjectType.none:
-        return '${languageInstruction}Generate a short educational question for a college student.';
+      default:
+        return '''${languageInstruction}Generate a short educational question about ${subject.displayName} for a college student.
+        Keep it concise and clear. Focus on key concepts and practical applications.
+        Format: Question on one line, then "Solution:" followed by the answer Do NOT include any explanations.''';
     }
   }
 

@@ -46,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _initializeTutorialAnimations();
     _startTutorial();
+    _loadCustomSubjects();
   }
 
   @override
@@ -55,6 +56,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialQuestion();
     });
+  }
+
+  Future<void> _loadCustomSubjects() async {
+    await SubjectType.loadUserSubjects();
+    if (mounted) {
+      setState(() {
+        // Trigger rebuild to show custom subjects
+      });
+    }
   }
 
   Future<void> _loadInitialQuestion() async {
@@ -504,36 +514,234 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Select Subject',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).textTheme.titleLarge?.color,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ...SubjectType.values.where((s) => s != SubjectType.none).map((subject) => ListTile(
-              leading: Icon(subject.icon, color: subject.color),
-              title: Text(
-                subject.getLocalizedName(context),
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Select Subject',
                 style: TextStyle(
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).textTheme.titleLarge?.color,
                 ),
               ),
-              onTap: () {
-                Navigator.pop(context);
-                _switchSubject(subject);
-              },
-            )),
-          ],
+              const SizedBox(height: 20),
+              // Scrollable subject list
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  itemCount: SubjectType.allSubjects.length,
+                  itemBuilder: (context, index) {
+                    final subject = SubjectType.allSubjects[index];
+                    final isCustomSubject = !['math', 'science', 'history', 'geography'].contains(subject.id);
+                    
+                    return ListTile(
+                      leading: Icon(subject.icon, color: subject.color),
+                      title: Text(
+                        subject.getLocalizedName(context),
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      trailing: isCustomSubject ? IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showDeleteSubjectConfirmation(subject);
+                        },
+                      ) : null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _switchSubject(subject);
+                      },
+                    );
+                  },
+                ),
+              ),
+              // Fixed Add Subject button at bottom
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.add, color: Theme.of(context).iconTheme.color),
+                title: Text(
+                  'Add Subject',
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAddSubjectDialog();
+                },
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showDeleteSubjectConfirmation(SubjectType subject) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Delete Subject'),
+          content: Text(
+            'Are you sure you want to delete "${subject.displayName}"?\n\nThis action cannot be undone.',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await _deleteSubject(subject);
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteSubject(SubjectType subject) async {
+    // Remove from user subjects
+    await SubjectType.removeSubject(subject.id);
+    
+    // If the deleted subject was currently active, switch to math
+    if (_currentSubject.id == subject.id) {
+      setState(() {
+        _currentSubject = SubjectType.math;
+      });
+      await _getQuestionForSubject(SubjectType.math);
+    } else {
+      setState(() {
+        // Trigger rebuild to update UI
+      });
+    }
+    
+    // Show confirmation
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${subject.displayName}" has been deleted'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showAddSubjectDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final TextEditingController nameController = TextEditingController();
+        Color selectedColor = Colors.blue;
+        IconData selectedIcon = Icons.class_;
+
+        return AlertDialog(
+          title: Text('Add New Subject'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(labelText: 'Subject Name'),
+                    ),
+                    SizedBox(height: 20),
+                    Text('Select a color'),
+                    Wrap(
+                      spacing: 10,
+                      children: [
+                        for (var color in [Colors.blue, Colors.red, Colors.green, Colors.orange, Colors.purple])
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                selectedColor = color;
+                              });
+                            },
+                            child: CircleAvatar(
+                              backgroundColor: color,
+                              child: selectedColor == color ? Icon(Icons.check, color: Colors.white) : null,
+                            ),
+                          )
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    Text('Select an icon'),
+                    Wrap(
+                      spacing: 10,
+                      children: [
+                        for (var icon in [Icons.class_, Icons.book, Icons.translate, Icons.computer, Icons.code])
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                selectedIcon = icon;
+                              });
+                            },
+                            child: CircleAvatar(
+                              backgroundColor: selectedIcon == icon ? Colors.blue.withOpacity(0.3) : Colors.transparent,
+                              child: Icon(icon, color: selectedIcon == icon ? Colors.blue : Colors.grey),
+                            ),
+                          )
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty) {
+                  final newSubject = SubjectType(
+                    id: nameController.text.toLowerCase().replaceAll(' ', '_'),
+                    displayName: nameController.text,
+                    icon: selectedIcon,
+                    color: selectedColor,
+                  );
+                  await SubjectType.addSubject(newSubject);
+                  setState(() {
+                    _currentSubject = newSubject;
+                  });
+                  Navigator.of(context).pop();
+                  // Load a question for the new subject
+                  await _getQuestionForSubject(newSubject);
+                }
+              },
+              child: Text('Add'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -555,45 +763,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final localizations = AppLocalizations.of(context);
     if (localizations == null) {
       // Fallback to English if localization is not available
-      switch (subject) {
-        case SubjectType.math:
+      switch (subject.id) {
+        case 'math':
           return 'Solve for x: 2x + 5 = 15';
-        case SubjectType.science:
+        case 'science':
           return 'What is the chemical formula for water?';
-        case SubjectType.history:
+        case 'history':
           return 'In which year did World War II end?';
-        case SubjectType.geography:
+        case 'geography':
           return 'What is the capital of Australia?';
-        case SubjectType.none:
-          return 'Please select a subject.';
+        default:
+          return 'What is a key concept in ${subject.displayName}?';
       }
     }
-    switch (subject) {
-      case SubjectType.math:
+    switch (subject.id) {
+      case 'math':
         return localizations.solveForX;
-      case SubjectType.science:
+      case 'science':
         return localizations.chemicalFormula;
-      case SubjectType.history:
+      case 'history':
         return localizations.worldWarEnd;
-      case SubjectType.geography:
+      case 'geography':
         return localizations.australiaCapital;
-      case SubjectType.none:
-        return 'Please select a subject.';
+      default:
+        return 'What is a key concept in ${subject.displayName}?';
     }
   }
 
   String _getSolutionForCurrentProblem() {
-    switch (_currentSubject) {
-      case SubjectType.math:
+    switch (_currentSubject.id) {
+      case 'math':
         return '2x + 5 = 15\n2x = 15 - 5\n2x = 10\nx = 5';
-      case SubjectType.science:
+      case 'science':
         return 'H₂O - Water consists of two hydrogen atoms and one oxygen atom.';
-      case SubjectType.history:
+      case 'history':
         return '1945 - World War II ended on September 2, 1945.';
-      case SubjectType.geography:
+      case 'geography':
         return 'Canberra - The capital of Australia is Canberra, not Sydney or Melbourne.';
-      case SubjectType.none:
-        return 'No solution available for this subject.';
+      default:
+        return 'This depends on the specific concepts and principles of ${_currentSubject.displayName}.';
     }
   }
 
@@ -805,7 +1013,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       alignment: WrapAlignment.center,
       spacing: 8,
       runSpacing: 8,
-      children: SubjectType.values.where((s) => s != SubjectType.none).map((subject) {
+      children: SubjectType.allSubjects.map((subject) {
         final isActive = subject == _currentSubject;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
