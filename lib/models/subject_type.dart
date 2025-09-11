@@ -1,39 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import '../services/localization_service.dart';
 
-enum SubjectType {
-  math('Math', Icons.calculate, Color(0xFF4CAF50)),
-  science('Science', Icons.science, Color(0xFF2196F3)),
-  history('History', Icons.history_edu, Color(0xFFFF9800)),
-  geography('Geography', Icons.public, Color(0xFF9C27B0)),
-  none('None', Icons.help_outline, Color(0xFF757575));
-
-  const SubjectType(this.displayName, this.icon, this.color);
-  
+class SubjectType {
   final String displayName;
   final IconData icon;
   final Color color;
-  
+  final String id;
+
+  const SubjectType({
+    required this.id,
+    required this.displayName,
+    required this.icon,
+    required this.color,
+  });
+
   String getLocalizedName(BuildContext context) {
     final localizations = AppLocalizations.of(context);
     if (localizations == null) return displayName;
-    
-    switch (this) {
-      case SubjectType.math:
+
+    switch (id) {
+      case 'math':
         return localizations.math;
-      case SubjectType.science:
+      case 'science':
         return localizations.science;
-      case SubjectType.history:
+      case 'history':
         return localizations.history;
-      case SubjectType.geography:
+      case 'geography':
         return localizations.geography;
-      case SubjectType.none:
-        return 'None';
+      default:
+        return displayName;
     }
   }
-  
-  static List<SubjectType> get allSubjects => SubjectType.values;
+
+  static final SubjectType math = SubjectType(id: 'math', displayName: 'Math', icon: Icons.calculate, color: Color(0xFF4CAF50));
+  static final SubjectType science = SubjectType(id: 'science', displayName: 'Science', icon: Icons.science, color: Color(0xFF2196F3));
+  static final SubjectType history = SubjectType(id: 'history', displayName: 'History', icon: Icons.history_edu, color: Color(0xFFFF9800));
+  static final SubjectType geography = SubjectType(id: 'geography', displayName: 'Geography', icon: Icons.public, color: Color(0xFF9C27B0));
+  static final SubjectType none = SubjectType(id: 'none', displayName: 'None', icon: Icons.help_outline, color: Color(0xFF757575));
+
+  static List<SubjectType> _userSubjects = [];
+
+  static List<SubjectType> get allSubjects => [math, science, history, geography, ..._userSubjects];
+  static List<SubjectType> get values => [math, science, history, geography, none, ..._userSubjects];
+
+  static void addSubject(SubjectType subject) {
+    _userSubjects.add(subject);
+  }
 }
 
 enum GestureDirection {

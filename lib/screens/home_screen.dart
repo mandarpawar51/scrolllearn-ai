@@ -493,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             const SizedBox(height: 20),
-            ...SubjectType.values.where((s) => s != SubjectType.none).map((subject) => ListTile(
+            ...SubjectType.allSubjects.map((subject) => ListTile(
               leading: Icon(subject.icon, color: subject.color),
               title: Text(
                 subject.getLocalizedName(context),
@@ -506,9 +506,114 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 _switchSubject(subject);
               },
             )),
+            ListTile(
+              leading: Icon(Icons.add, color: Theme.of(context).iconTheme.color),
+              title: Text(
+                'Add Subject',
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showAddSubjectDialog();
+              },
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showAddSubjectDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final TextEditingController nameController = TextEditingController();
+        Color selectedColor = Colors.blue;
+        IconData selectedIcon = Icons.class_;
+
+        return AlertDialog(
+          title: Text('Add New Subject'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(labelText: 'Subject Name'),
+                    ),
+                    SizedBox(height: 20),
+                    Text('Select a color'),
+                    Wrap(
+                      spacing: 10,
+                      children: [
+                        for (var color in [Colors.blue, Colors.red, Colors.green, Colors.orange, Colors.purple])
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                selectedColor = color;
+                              });
+                            },
+                            child: CircleAvatar(
+                              backgroundColor: color,
+                              child: selectedColor == color ? Icon(Icons.check, color: Colors.white) : null,
+                            ),
+                          )
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    Text('Select an icon'),
+                    Wrap(
+                      spacing: 10,
+                      children: [
+                        for (var icon in [Icons.class_, Icons.book, Icons.translate, Icons.computer, Icons.code])
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                selectedIcon = icon;
+                              });
+                            },
+                            child: CircleAvatar(
+                              backgroundColor: selectedIcon == icon ? Colors.blue.withOpacity(0.3) : Colors.transparent,
+                              child: Icon(icon, color: selectedIcon == icon ? Colors.blue : Colors.grey),
+                            ),
+                          )
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (nameController.text.isNotEmpty) {
+                  final newSubject = SubjectType(
+                    id: nameController.text.toLowerCase().replaceAll(' ', '_'),
+                    displayName: nameController.text,
+                    icon: selectedIcon,
+                    color: selectedColor,
+                  );
+                  SubjectType.addSubject(newSubject);
+                  setState(() {});
+                  Navigator.of(context).pop();
+                }
+              },
+              child: Text('Add'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -567,44 +672,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final localizations = AppLocalizations.of(context);
     if (localizations == null) {
       // Fallback to English if localization is not available
-      switch (subject) {
-        case SubjectType.math:
+      switch (subject.id) {
+        case 'math':
           return 'Solve for x: 2x + 5 = 15';
-        case SubjectType.science:
+        case 'science':
           return 'What is the chemical formula for water?';
-        case SubjectType.history:
+        case 'history':
           return 'In which year did World War II end?';
-        case SubjectType.geography:
+        case 'geography':
           return 'What is the capital of Australia?';
-        case SubjectType.none:
+        default:
           return 'Please select a subject.';
       }
     }
-    switch (subject) {
-      case SubjectType.math:
+    switch (subject.id) {
+      case 'math':
         return localizations.solveForX;
-      case SubjectType.science:
+      case 'science':
         return localizations.chemicalFormula;
-      case SubjectType.history:
+      case 'history':
         return localizations.worldWarEnd;
-      case SubjectType.geography:
+      case 'geography':
         return localizations.australiaCapital;
-      case SubjectType.none:
+      default:
         return 'Please select a subject.';
     }
   }
 
   String _getSolutionForCurrentProblem() {
-    switch (_currentSubject) {
-      case SubjectType.math:
+    switch (_currentSubject.id) {
+      case 'math':
         return '2x + 5 = 15\n2x = 15 - 5\n2x = 10\nx = 5';
-      case SubjectType.science:
+      case 'science':
         return 'H₂O - Water consists of two hydrogen atoms and one oxygen atom.';
-      case SubjectType.history:
+      case 'history':
         return '1945 - World War II ended on September 2, 1945.';
-      case SubjectType.geography:
+      case 'geography':
         return 'Canberra - The capital of Australia is Canberra, not Sydney or Melbourne.';
-      case SubjectType.none:
+      default:
         return 'No solution available for this subject.';
     }
   }
@@ -817,7 +922,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       alignment: WrapAlignment.center,
       spacing: 8,
       runSpacing: 8,
-      children: SubjectType.values.where((s) => s != SubjectType.none).map((subject) {
+      children: SubjectType.allSubjects.map((subject) {
         final isActive = subject == _currentSubject;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
