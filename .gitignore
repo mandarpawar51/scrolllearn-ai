@@ -93,6 +93,9 @@ user_data/
 preferences.json
 settings.json
 
+# Production Readiness Checklist (sensitive information)
+PRODUCTION_CHECKLIST.md
+
 # Any accidentally created config files
 config.dart
 api_config.dart
